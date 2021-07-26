@@ -13,7 +13,6 @@ while(1):
     env.render()
     assert env.observation_space.contains(ob)
     a = agent(ob)
-    a = [0]*4
     assert env.action_space.contains(a)
     (ob, _reward, done, _info) = env.step(a)
     time.sleep(0.01)

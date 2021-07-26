@@ -24,7 +24,7 @@ class XarmEnv(gym.GoalEnv):
         self.obj_space = spaces.Box(low=np.array([0.3, -0.2]), high=np.array([0.5, 0.2]))
         self.max_vel = 0.5
         self.max_gripper_vel = 10
-        self.height_offset = 0.125
+        self.height_offset = 0.025
         self.startPos = [0, 0, 0]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9

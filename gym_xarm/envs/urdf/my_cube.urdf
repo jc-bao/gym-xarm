@@ -15,7 +15,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-				<mesh filename="cube.obj" scale="0.05 0.05 0.05"/>
+				<mesh filename="meshes/cube.obj" scale="0.05 0.05 0.05"/>
       </geometry>
        <material name="white">
         <color rgba="1 1 1 1"/>
