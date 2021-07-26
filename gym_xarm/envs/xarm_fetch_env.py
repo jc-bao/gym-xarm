@@ -10,7 +10,7 @@ class XarmFetchEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./240
-        self.n_substeps = 20
+        self.n_substeps = 50
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
         self.distance_threshold=0.05
@@ -22,7 +22,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
         self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
         self.obj_space = spaces.Box(low=np.array([0.3, -0.2]), high=np.array([0.5, 0.2]))
-        self.max_vel = 5
+        self.max_vel = 1
         self.max_gripper_vel = 20
         self.height_offset = 0.025
         self.startPos = [0, 0, 0]
@@ -32,7 +32,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self._max_episode_steps = 50
         
         # connect bullet
-        p.connect(p.GUI) #or p.DIRECT for non-graphical version
+        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
         self.if_render = False
 
         # bullet setup
