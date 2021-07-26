@@ -42,8 +42,9 @@ class XarmEnv(gym.GoalEnv):
         # load table
         self.table = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
         # load lego
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_cube.urdf')
         lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-        self.lego = p.loadURDF("my_cube.urdf",lego_pos)
+        self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7.urdf')
         self.xarm = p.loadURDF(fullpath, self.startPos, self.startOrientation, useFixedBase=True)
@@ -51,7 +52,8 @@ class XarmEnv(gym.GoalEnv):
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])
         # load goal
-        self.sphere = p.loadURDF("sphere_red.urdf",useFixedBase=True)
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_sphere.urdf')
+        self.sphere = p.loadURDF(fullpath,useFixedBase=True)
         # load debug setting
         p.setDebugObjectColor(self.xarm, self.arm_eef_index,objectDebugColorRGB=[1, 0, 0])
 
