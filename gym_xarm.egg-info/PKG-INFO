@@ -6,7 +6,20 @@ Home-page: UNKNOWN
 Author: Chaoyi Pan
 Author-email: pcy19@mails.tsinghua.edu.cn
 License: UNKNOWN
-Description: UNKNOWN
+Description: # Gym implementation for Xarm 
+        
+        ## Installation
+        
+        ```
+        pip install -e .
+        ```
+        
+        ## Use Cases
+        
+        ```
+        import gym_xarm
+        env = gym.make('Xarm-v0') 
+        ```
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License

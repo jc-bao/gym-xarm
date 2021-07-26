@@ -4,6 +4,10 @@ from gym.envs.registration import register
 logger = logging.getLogger(__name__)
 
 register(
-    id='Xarm-v0',
-    entry_point='gym_xarm.envs:XarmEnv',
+    id='XarmFetch-v0',
+    entry_point='gym_xarm.envs:XarmFetchEnv',
+)
+register(
+    id='XarmReach-v0',
+    entry_point='gym_xarm.envs:XarmReachEnv',
 )

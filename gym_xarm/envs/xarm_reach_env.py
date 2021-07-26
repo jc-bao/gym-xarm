@@ -6,7 +6,7 @@ import numpy as np
 import pybullet as p
 import pybullet_data as pd
 
-class XarmEnv(gym.GoalEnv):
+class XarmReachEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./240
@@ -21,7 +21,6 @@ class XarmEnv(gym.GoalEnv):
         self.reward_type = 'sparse'
         self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
         self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
-        self.obj_space = spaces.Box(low=np.array([0.3, -0.2]), high=np.array([0.5, 0.2]))
         self.max_vel = 5
         self.max_gripper_vel = 20
         self.height_offset = 0.025
@@ -42,10 +41,6 @@ class XarmEnv(gym.GoalEnv):
         p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
         # load table
         self.table = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
-        # load lego
-        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_cube.urdf')
-        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-        self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7.urdf')
         self.xarm = p.loadURDF(fullpath, self.startPos, self.startOrientation, useFixedBase=True)
@@ -87,7 +82,7 @@ class XarmEnv(gym.GoalEnv):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmEnv, self).reset()
+        super(XarmReachEnv, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
@@ -124,9 +119,6 @@ class XarmEnv(gym.GoalEnv):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1],force=5 * 240.)
         for i in range(self.gripper_driver_index, self.num_joints):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, new_gripper_pos,force=5 * 240.)
-        # joint_index = list(range(self.arm_eef_index))+list(range(self.gripper_driver_index, self.num_joints))
-        # joint_state = list(jointPoses)+[new_gripper_pos]*(self.num_joints-self.gripper_driver_index)
-        # p.setJointMotorControlArray(self.xarm, joint_index, p.POSITION_CONTROL, joint_state)
 
     def _get_obs(self):
         # robot state
@@ -137,20 +129,13 @@ class XarmEnv(gym.GoalEnv):
         grip_state = p.getLinkState(self.xarm, self.gripper_base_index, computeLinkVelocity=1)
         grip_pos = np.array(grip_state[0])
         grip_velp = np.array(grip_state[6])
-        # object state
-        obj_pos = np.array(p.getBasePositionAndOrientation(self.lego)[0])
-        obj_rot = np.array(p.getBasePositionAndOrientation(self.lego)[1])
-        obj_velp = np.array(p.getBaseVelocity(self.lego)[0]) - grip_velp
-        obj_velr = np.array(p.getBaseVelocity(self.lego)[1])
-        obj_rel_pos = obj_pos - grip_pos
         # observation
         obs = np.concatenate((
-                    obj_pos, obj_rel_pos, obj_rot, obj_velp, obj_velr,
                     grip_pos, grip_velp, gripper_pos, gripper_vel
         ))
         return {
             'observation': obs.copy(),
-            'achieved_goal': np.squeeze(obj_pos.copy()),
+            'achieved_goal': np.squeeze(grip_pos.copy()),
             'desired_goal': self.goal.copy()
         }
 
@@ -158,9 +143,6 @@ class XarmEnv(gym.GoalEnv):
         # reset arm
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])
-        # randomize position of lego
-        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-        p.resetBasePositionAndOrientation(self.lego, lego_pos, self.startOrientation)
         p.stepSimulation()
         return True
 

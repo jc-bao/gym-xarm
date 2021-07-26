@@ -1,12 +1,12 @@
 import time
 import os
 import gym
-# import gym_xarm.envs.xarm_env 
+# import gym_xarm.envs.xarm_reach_env 
 import numpy as np
 import gym_xarm
 
 # env = gym.make('FetchPickAndPlace-v1') # FetchPickAndPlace-v0
-env = gym.make('Xarm-v0') # FetchPickAndPlace-v0
+env = gym.make('XarmReach-v0') # FetchPickAndPlace-v0
 agent = lambda ob: env.action_space.sample()
 ob = env.reset()
 while(1):
