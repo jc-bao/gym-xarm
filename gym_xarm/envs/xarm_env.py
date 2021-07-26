@@ -22,13 +22,14 @@ class XarmEnv(gym.GoalEnv):
         self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
         self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
         self.obj_space = spaces.Box(low=np.array([0.3, -0.2]), high=np.array([0.5, 0.2]))
-        self.max_vel = 0.5
-        self.max_gripper_vel = 10
+        self.max_vel = 5
+        self.max_gripper_vel = 20
         self.height_offset = 0.025
         self.startPos = [0, 0, 0]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
         # training parameters
+        self._max_episode_steps = 50
         
         # connect bullet
         p.connect(p.GUI) #or p.DIRECT for non-graphical version
@@ -77,12 +78,12 @@ class XarmEnv(gym.GoalEnv):
         p.setGravity(0,0,-9.8)
         p.stepSimulation()
         obs = self._get_obs()
-        reward = self.compute_reward(obs['achieved_goal'], self.goal)
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
+        reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         done = False
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render)
+        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
     def reset(self):
@@ -94,7 +95,7 @@ class XarmEnv(gym.GoalEnv):
     # GoalEnv methods
     # -------------------------
 
-    def compute_reward(self, achieved_goal, goal):
+    def compute_reward(self, achieved_goal, goal, info):
         d = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
