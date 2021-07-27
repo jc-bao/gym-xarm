@@ -10,7 +10,7 @@ class XarmFetchEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
-        self.n_substeps = 10
+        self.n_substeps = 15
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
         self.distance_threshold=0.05
@@ -19,20 +19,20 @@ class XarmFetchEnv(gym.GoalEnv):
         self.gripper_base_index = 9
         self.arm_eef_index = 8
         self.reward_type = 'sparse'
-        self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
-        self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
-        self.obj_space = spaces.Box(low=np.array([0.3, -0.2]), high=np.array([0.5, 0.2]))
-        self.max_vel = 1
-        self.max_gripper_vel = 20
+        self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.18]), high=np.array([0.5, 0.3, 0.35]))
+        self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.15]))
+        self.obj_space = spaces.Box(low=np.array([0.35, -0.2]), high=np.array([0.45, 0.2]))
+        self.max_vel = 0.25
+        self.max_gripper_vel = 5
         self.height_offset = 0.025
         self.startPos = [0, 0, 0]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
         # training parameters
-        self._max_episode_steps = 60
+        self._max_episode_steps = 50
         
         # connect bullet
-        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
+        p.connect(p.GUI) #or p.DIRECT for non-graphical version
         self.if_render = False
 
         # bullet setup
@@ -69,6 +69,7 @@ class XarmFetchEnv(gym.GoalEnv):
         ))
 
         p.stepSimulation()
+        p.setRealTimeSimulation(True)
 
     # basic methods
     # -------------------------
