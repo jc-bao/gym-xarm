@@ -22,6 +22,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.18]), high=np.array([0.5, 0.3, 0.35]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.15]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.2]), high=np.array([0.45, 0.2]))
+        self.gripper_space = spaces.Box(low=0., high=0.4, shape=[1])
         self.max_vel = 0.25
         self.max_gripper_vel = 5
         self.height_offset = 0.025
@@ -119,7 +120,7 @@ class XarmFetchEnv(gym.GoalEnv):
         new_pos = cur_pos + np.array(action[:3]) * self.max_vel * self.dt
         new_pos = np.clip(new_pos, self.pos_space.low, self.pos_space.high)
         cur_gripper_pos = p.getJointState(self.xarm, self.gripper_driver_index)[0]
-        new_gripper_pos = cur_gripper_pos + action[3]*self.dt * self.max_gripper_vel
+        new_gripper_pos = np.clip(cur_gripper_pos + action[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
         jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, new_pos, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200

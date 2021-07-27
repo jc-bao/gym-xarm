@@ -110,7 +110,7 @@
     <parent link="link1"/>
     <child link="link2"/>
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-2.059" upper="2.0944" velocity="3.14"/>
+    <limit effort='50' lower="-2.059" upper="2.0944" velocity="3.14"/>
     <dynamics damping="10" friction="1"/>
   </joint>
   <link name="link3">
@@ -414,9 +414,19 @@
     <parent link="xarm_gripper_base_link"/>
     <child link="left_outer_knuckle"/>
     <axis xyz="1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort="5000" lower="0" upper="0.85" velocity="2"/>
+    <!-- effort="50"  -->
   </joint>
   <link name="left_finger">
+    <contact>
+      <friction_anchor/>
+      <!-- <stiffness value="30000.0"/>
+      <damping value="1000.0"/> -->
+      <lateral_friction value="1000.0"/>
+      <rolling_friction value="0.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="0.0"/>
+    </contact>
     <inertial>
       <origin rpy="0 0 0" xyz="-2.4536E-14 -0.016413 0.029258"/>
       <mass value="0.048304"/>
@@ -432,6 +442,7 @@
       </material>
     </visual>
     <collision>
+      <contact_coefficients mu='1000.0' kp='1.0' kd='1.0'/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="meshes/left_finger.STL"/>
@@ -443,7 +454,8 @@
     <parent link="left_outer_knuckle"/>
     <child link="left_finger"/>
     <axis xyz="-1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort="5000" lower="0" upper="0.85" velocity="2"/>
+    <!-- effort="50"  -->
     <mimic joint="drive_joint" multiplier="1" offset="0"/>
   </joint>
   <link name="left_inner_knuckle">
@@ -473,7 +485,8 @@
     <parent link="xarm_gripper_base_link"/>
     <child link="left_inner_knuckle"/>
     <axis xyz="1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort='5000' lower="0" upper="0.85" velocity="2"/>
+    <!-- effort="00"  -->
     <mimic joint="drive_joint" multiplier="1" offset="0"/>
   </joint>
   <link name="right_outer_knuckle">
@@ -503,10 +516,19 @@
     <parent link="xarm_gripper_base_link"/>
     <child link="right_outer_knuckle"/>
     <axis xyz="-1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort="5000" lower="0" upper="0.85" velocity="2"/>
     <mimic joint="drive_joint" multiplier="1" offset="0"/>
   </joint>
   <link name="right_finger">
+    <contact>
+      <friction_anchor/>
+      <!-- <stiffness value="30000.0"/>
+      <damping value="1000.0"/> -->
+      <lateral_friction value="1000.0"/>
+      <rolling_friction value="0.0"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="0.0"/>
+    </contact>
     <inertial>
       <origin rpy="0 0 0" xyz="2.5618E-14 0.016413 0.029258"/>
       <mass value="0.048304"/>
@@ -522,6 +544,7 @@
       </material>
     </visual>
     <collision>
+      <contact_coefficients mu='1000.0' kp='1.0' kd='1.0'/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="meshes/right_finger.STL"/>
@@ -533,7 +556,8 @@
     <parent link="right_outer_knuckle"/>
     <child link="right_finger"/>
     <axis xyz="1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort='5000' lower="0" upper="0.85" velocity="2"/>
+    <!-- effort="50" -->
     <mimic joint="drive_joint" multiplier="1" offset="0"/>
   </joint>
   <link name="right_inner_knuckle">
@@ -563,7 +587,8 @@
     <parent link="xarm_gripper_base_link"/>
     <child link="right_inner_knuckle"/>
     <axis xyz="-1 0 0"/>
-    <limit effort="50" lower="0" upper="0.85" velocity="2"/>
+    <limit effort='5000' lower="0" upper="0.85" velocity="2"/>
+    <!-- effort="50" -->
     <mimic joint="drive_joint" multiplier="1" offset="0"/>
   </joint>
   <link name="link_tcp"/>
