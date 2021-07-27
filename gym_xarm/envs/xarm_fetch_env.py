@@ -9,8 +9,8 @@ import pybullet_data as pd
 class XarmFetchEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
-        self.timeStep=1./240
-        self.n_substeps = 50
+        self.timeStep=1./60
+        self.n_substeps = 10
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
         self.distance_threshold=0.05
@@ -29,7 +29,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
         # training parameters
-        self._max_episode_steps = 50
+        self._max_episode_steps = 60
         
         # connect bullet
         p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
