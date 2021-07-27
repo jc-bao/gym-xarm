@@ -22,7 +22,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.18]), high=np.array([0.5, 0.3, 0.35]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.15]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.2]), high=np.array([0.45, 0.2]))
-        self.gripper_space = spaces.Box(low=0., high=0.4, shape=[1])
+        self.gripper_space = spaces.Box(low=0., high=0.5, shape=[1])
         self.max_vel = 0.25
         self.max_gripper_vel = 5
         self.height_offset = 0.025
