@@ -33,7 +33,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self._max_episode_steps = 50
         
         # connect bullet
-        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
+        p.connect(p.GUI) #or p.DIRECT for non-graphical version
         self.if_render = False
 
         # bullet setup
@@ -109,6 +109,7 @@ class XarmFetchEnv(gym.GoalEnv):
         return [seed]
 
     def render(self):
+        # p.connect(p.GUI)
         self.if_render = True
 
     # RobotEnv method
@@ -125,7 +126,8 @@ class XarmFetchEnv(gym.GoalEnv):
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
         for i in range(self.gripper_driver_index, self.num_joints):
-            p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, new_gripper_pos)
+            p.setJointMotorControl2(self.xarm, i , p.POSITION_CONTROL, new_gripper_pos)
+            p.resetJointState(self.xarm, i, p.getJointState(self.xarm, self.gripper_driver_index)[0])
         # joint_index = list(range(self.arm_eef_index))+list(range(self.gripper_driver_index, self.num_joints))
         # joint_state = list(jointPoses)+[new_gripper_pos]*(self.num_joints-self.gripper_driver_index)
         # p.setJointMotorControlArray(self.xarm, joint_index, p.POSITION_CONTROL, joint_state)

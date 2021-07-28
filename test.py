@@ -9,7 +9,7 @@ import gym_xarm
 env = gym.make('XarmFetch-v0') # FetchPickAndPlace-v0
 agent = lambda ob: env.action_space.sample()
 ob = env.reset()
-for _ in range(env._max_episode_steps*10):
+for _ in range(env._max_episode_steps):
     env.render()
     assert env.observation_space.contains(ob)
     a = agent(ob)
