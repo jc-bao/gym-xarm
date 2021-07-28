@@ -26,7 +26,7 @@ class XarmPDFetchEnv(gym.GoalEnv):
         self.grasp_index = 12
         self.reward_type = 'sparse'
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.125]), high=np.array([0.5, 0.3, 0.4]))
-        self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.1]),high=np.array([0.45, 0.25, 0.3]))
+        self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))
         self.gripper_space = spaces.Box(low=0., high=0.04, shape=[1])
         self.max_vel = 0.25
