@@ -6,7 +6,7 @@ import numpy as np
 import gym_xarm
 
 # env = gym.make('FetchPickAndPlace-v1') # FetchPickAndPlace-v0
-env = gym.make('XarmFetch-v0') # FetchPickAndPlace-v0
+env = gym.make('XarmPDFetch-v0') # FetchPickAndPlace-v0
 agent = lambda ob: env.action_space.sample()
 ob = env.reset()
 for _ in range(env._max_episode_steps):
