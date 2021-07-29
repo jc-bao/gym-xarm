@@ -34,7 +34,7 @@ python test.py
 
 ## Demo
 
-| FetchReach-v1                                                | XarmPickAndPlace-v0                                          | XarmPDPickAndPlace-v0                                        |
+| XarmReach-v0                                              | XarmPickAndPlace-v0                                          | XarmPDPickAndPlace-v0                                        |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![Large GIF (320x320)](https://tva1.sinaimg.cn/large/008i3skNgy1gsxjpl1q49g308w08wnpd.gif) | ![Large GIF (320x320)](https://tva1.sinaimg.cn/large/008i3skNgy1gsxjlnnjudg308w08wu0x.gif) | ![Large GIF (320x320)](https://tva1.sinaimg.cn/large/008i3skNgy1gsxjxkzv0tg308w08wqv5.gif) |
 
