@@ -33,7 +33,7 @@ class XarmFetchEnv(gym.GoalEnv):
         self._max_episode_steps = 50
         
         # connect bullet
-        p.connect(p.GUI) #or p.DIRECT for non-graphical version
+        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
         self.if_render = False
 
         # bullet setup
