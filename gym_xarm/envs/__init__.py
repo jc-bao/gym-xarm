@@ -1,3 +1,4 @@
-from gym_xarm.envs.xarm_fetch_env import XarmFetchEnv
-from gym_xarm.envs.xarmPD_fetch_env import XarmPDFetchEnv
+from gym_xarm.envs.xarm_pick_and_place_env import XarmPickAndPlaceEnv
+from gym_xarm.envs.xarmPD_pick_and_place_env import XarmPDPickAndPlaceEnv
 from gym_xarm.envs.xarm_reach_env import XarmReachEnv
+from gym_xarm.envs.xarm_rearrange_env import XarmRearrageEnv

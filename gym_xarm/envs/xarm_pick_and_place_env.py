@@ -6,7 +6,7 @@ import numpy as np
 import pybullet as p
 import pybullet_data as pd
 
-class XarmFetchEnv(gym.GoalEnv):
+class XarmPickAndPlaceEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
@@ -26,8 +26,10 @@ class XarmFetchEnv(gym.GoalEnv):
         self.max_vel = 0.25
         self.max_gripper_vel = 5
         self.height_offset = 0.025
-        self.startPos = [0, 0, 0]
-        self.startOrientation = p.getQuaternionFromEuler([0,0,0])
+        self.startPos_1 = [-0.7, 0, 0]
+        self.startPos_2 = [0.7, 0, 0]
+        self.startOrientation_1 = p.getQuaternionFromEuler([0,0,0])
+        self.startOrientation_2 = p.getQuaternionFromEuler([np.pi,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
         # training parameters
         self._max_episode_steps = 50
@@ -49,7 +51,8 @@ class XarmFetchEnv(gym.GoalEnv):
         self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7.urdf')
-        self.xarm = p.loadURDF(fullpath, self.startPos, self.startOrientation, useFixedBase=True)
+        self.xarm_1 = p.loadURDF(fullpath, self.startPos_1, self.startOrientation_1, useFixedBase=True)
+        self.xarm_2 = p.loadURDF(fullpath, self.startPos_2, self.startOrientation_2, useFixedBase=True)
         # jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, self.startGripPos, [1,0,0,0])[:self.arm_eef_index]
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])

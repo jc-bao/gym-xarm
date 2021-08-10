@@ -10,7 +10,7 @@ import pybullet_data as pd
 Uses Panda Gripper
 '''
 
-class XarmPDFetchEnv(gym.GoalEnv):
+class XarmRearrangeEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
