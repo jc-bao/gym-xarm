@@ -19,3 +19,7 @@ register(
     id='XarmPDRearrange-v0',
     entry_point='gym_xarm.envs:XarmPDRearrangeEnv',
 )
+register(
+    id='XarmPDStackTower-v0',
+    entry_point='gym_xarm.envs:XarmPDStackTowerEnv',
+)
