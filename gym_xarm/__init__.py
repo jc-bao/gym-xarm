@@ -27,3 +27,8 @@ register(
     id='XarmPDPushWithDoor-v0',
     entry_point='gym_xarm.envs:XarmPDPushWithDoorEnv',
 )
+register(
+    id='XarmPDOpenBoxAndPlace-v0',
+    entry_point='gym_xarm.envs:XarmPDOpenBoxAndPlaceEnv',
+)
+
