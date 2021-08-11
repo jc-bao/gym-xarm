@@ -4,14 +4,18 @@ from gym.envs.registration import register
 logger = logging.getLogger(__name__)
 
 register(
-    id='XarmFetch-v0',
-    entry_point='gym_xarm.envs:XarmFetchEnv',
+    id='XarmPickAndPlace-v0',
+    entry_point='gym_xarm.envs:XarmPickAndPlaceEnv',
 )
 register(
-    id='XarmPDFetch-v0',
-    entry_point='gym_xarm.envs:XarmPDFetchEnv',
+    id='XarmPDPickAndPlace-v0',
+    entry_point='gym_xarm.envs:XarmPDPickAndPlaceEnv',
 )
 register(
     id='XarmReach-v0',
     entry_point='gym_xarm.envs:XarmReachEnv',
+)
+register(
+    id='XarmPDRearrange-v0',
+    entry_point='gym_xarm.envs:XarmPDRearrangeEnv',
 )

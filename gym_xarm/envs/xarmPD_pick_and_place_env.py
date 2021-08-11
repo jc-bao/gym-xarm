@@ -10,7 +10,7 @@ import pybullet_data as pd
 Uses Panda Gripper
 '''
 
-class XarmPDPickAndPlaceEnvEnv(gym.GoalEnv):
+class XarmPDPickAndPlaceEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
@@ -96,7 +96,7 @@ class XarmPDPickAndPlaceEnvEnv(gym.GoalEnv):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDFetchEnv, self).reset()
+        super(XarmPDPickAndPlaceEnv, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
