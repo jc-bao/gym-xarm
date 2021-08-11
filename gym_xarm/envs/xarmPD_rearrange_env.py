@@ -91,6 +91,7 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
         ))
         p.stepSimulation()
+        # p.resetDebugVisualizerCamera()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         p.setRealTimeSimulation(True)
 
