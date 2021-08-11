@@ -44,7 +44,7 @@ class XarmPDStackTowerEnv(gym.GoalEnv):
         
         # connect bullet
         p.connect(p.GUI) #or p.DIRECT for non-graphical version
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
         self.if_render = False
 

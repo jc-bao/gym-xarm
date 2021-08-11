@@ -31,4 +31,9 @@ register(
     id='XarmPDOpenBoxAndPlace-v0',
     entry_point='gym_xarm.envs:XarmPDOpenBoxAndPlaceEnv',
 )
+register(
+    id='XarmPDHandover-v0',
+    entry_point='gym_xarm.envs:XarmPDHandover',
+)
+
 

@@ -7,10 +7,10 @@ import pybullet as p
 import pybullet_data as pd
 
 '''
-Push Task with Door
+Uses Panda Gripper to handoover
 '''
 
-class XarmPDPushWithDoorEnv(gym.GoalEnv):
+class XarmPDHandover(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
@@ -26,10 +26,11 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.4, -0.3 ,0.125]), high=np.array([0.3, 0.3, 0.4]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([-0.3, -0.3 ,0.125]), high=np.array([0.4, 0.3, 0.4]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.1, -0.2]),high=np.array([0.3, 0.2]), dtype=np.float32)
-        self.obj_space = spaces.Box(low=np.array([-0.3, -0.2]), high=np.array([-0.1, 0.2]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-1.6, -0.3 ,0.125]), high=np.array([0.3, 0.3, 0.4]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([-0.3, -0.3 ,0.125]), high=np.array([1.6, 0.3, 0.4]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.8, -0.3, 0.025]),high=np.array([1.4, 0.3, 0.27]), dtype=np.float32)
+        self.obj_space = spaces.Box(low=np.array([-1.4, -0.3]), high=np.array([-0.8, 0.3]), dtype=np.float32)
+        self.gripper_space = spaces.Box(low=0.021, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
         self.height_offset = 0.025
@@ -53,18 +54,17 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         p.setTimeStep(self.timeStep)
         p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
         # load table
-        self.table = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
-        # load door
-        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_door.urdf')
-        self.door = p.loadURDF(fullpath,[0,0,0],self.startOrientation_1, useFixedBase=True)
+        self.table_1= p.loadURDF("table/table.urdf", [-1.5,0,-0.625], useFixedBase=True)
+        self.table_2 = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
+        self.table_3 = p.loadURDF("table/table.urdf", [1.5,0,-0.625], useFixedBase=True)
         # load lego
         self.colors = [np.random.sample(size = 3).tolist() + [1] for _ in range(self.num_obj)]
         self.legos = [None] * self.num_obj
         for i in range(self.num_obj):
-            lg_v = p.createVisualShape(shapeType=p.GEOM_BOX, halfExtents = [0.025]*3, rgbaColor = self.colors[i])
-            lg_c = p.createCollisionShape(shapeType=p.GEOM_BOX, halfExtents = [0.025]*3)
+            lg_v = p.createVisualShape(shapeType=p.GEOM_BOX, halfExtents = [0.025, 0.1, 0.025], rgbaColor = self.colors[i])
+            lg_c = p.createCollisionShape(shapeType=p.GEOM_BOX, halfExtents = [0.025, 0.1, 0.025])
             lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-            self.legos[i] = p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.1, basePosition=lego_pos)
+            self.legos[i] = p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.1, basePosition=lego_pos, baseOrientation = p.getQuaternionFromEuler([0,0,self.np_random.uniform(-np.pi, np.pi)]))
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm_1 = p.loadURDF(fullpath, self.startPos_1, self.startOrientation_1, useFixedBase=True)
@@ -87,7 +87,7 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         # gym setup
         self.goal = self._sample_goal()
         obs = self._get_obs()
-        self.action_space = spaces.Box(-1., 1., shape=(6,), dtype='float32')
+        self.action_space = spaces.Box(-1., 1., shape=(8,), dtype='float32')
         self.observation_space = spaces.Dict(dict(
             desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
             achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
@@ -115,7 +115,7 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDPushWithDoorEnv, self).reset()
+        super(XarmPDHandover, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
@@ -142,26 +142,34 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
     # -------------------------
 
     def _set_action(self, action):
-        assert action.shape == (6,), 'action shape error'
+        assert action.shape == (8,), 'action shape error'
         cur_pos_1 = np.array(p.getLinkState(self.xarm_1, self.arm_eef_index)[0])
         cur_pos_2 = np.array(p.getLinkState(self.xarm_2, self.arm_eef_index)[0])
         new_pos_1 = cur_pos_1 + np.array(action[0:3]) * self.max_vel * self.dt
         new_pos_1 = np.clip(new_pos_1, self.pos_space_1.low, self.pos_space_1.high)
-        new_pos_2 = cur_pos_2 + np.array(action[3:6]) * self.max_vel * self.dt
+        new_pos_2 = cur_pos_2 + np.array(action[4:7]) * self.max_vel * self.dt
         new_pos_2 = np.clip(new_pos_2, self.pos_space_2.low, self.pos_space_2.high)
+        cur_gripper_pos_1 = p.getJointState(self.xarm_1, self.finger1_index)[0]
+        new_gripper_pos_1 = np.clip(cur_gripper_pos_1 + action[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
+        cur_gripper_pos_2 = p.getJointState(self.xarm_2, self.finger1_index)[0]
+        new_gripper_pos_2 = np.clip(cur_gripper_pos_2 + action[7]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
         jointPoses_1 = p.calculateInverseKinematics(self.xarm_1, self.arm_eef_index, new_pos_1, [1,0,0,0], maxNumIterations = self.n_substeps)
         jointPoses_2 = p.calculateInverseKinematics(self.xarm_2, self.arm_eef_index, new_pos_2, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm_1, i, p.POSITION_CONTROL, jointPoses_1[i-1]) # max=1200
             p.setJointMotorControl2(self.xarm_2, i, p.POSITION_CONTROL, jointPoses_2[i-1]) # max=1200
-        p.setJointMotorControl2(self.xarm_1, self.finger1_index, p.POSITION_CONTROL, 0)
-        p.setJointMotorControl2(self.xarm_2, self.finger2_index, p.POSITION_CONTROL, 0)
+        p.setJointMotorControl2(self.xarm_1, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_1)
+        p.setJointMotorControl2(self.xarm_2, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_2)
 
     def _get_obs(self):
         # robot state
         robot_state_1 = p.getJointStates(self.xarm_1, np.arange(0,self.num_joints))
         robot_state_2 = p.getJointStates(self.xarm_2, np.arange(0,self.num_joints))
         # gripper state
+        gripper_pos_1 = np.array([robot_state_1[self.finger1_index][0]])
+        gripper_vel_1 = np.array([robot_state_1[self.finger1_index][1]])
+        gripper_pos_2 = np.array([robot_state_2[self.finger1_index][0]])
+        gripper_vel_2 = np.array([robot_state_2[self.finger1_index][1]])
         grip_state_1 = p.getLinkState(self.xarm_1, self.gripper_base_index, computeLinkVelocity=1)
         grip_state_2 = p.getLinkState(self.xarm_2, self.gripper_base_index, computeLinkVelocity=1)
         grip_pos_1 = np.array(grip_state_1[0])
@@ -181,8 +189,8 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         # final obs
         obs = np.concatenate((
             obj_pos, obj_rot, obj_velp, obj_velr,
-            grip_pos_1, grip_velp_1,
-            grip_pos_2, grip_velp_2
+            grip_pos_1, grip_velp_1, gripper_pos_1, gripper_vel_1,
+            grip_pos_2, grip_velp_2, gripper_pos_2, gripper_vel_2
         ))
         return {
             'observation': obs.copy(),
@@ -198,14 +206,14 @@ class XarmPDPushWithDoorEnv(gym.GoalEnv):
         # randomize position of lego
         for i in range(self.num_obj):
             lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-            p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
+            p.resetBasePositionAndOrientation(self.legos[i], lego_pos, p.getQuaternionFromEuler([0,0,self.np_random.uniform(-np.pi, np.pi)]))
         p.stepSimulation()
         return True
 
     def _sample_goal(self):
         goal = [None]*self.num_obj
         for i in range(self.num_obj):
-            goal[i] = np.concatenate((self.goal_space.sample(), [self.height_offset]))
+            goal[i] = self.goal_space.sample()
             p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
         return np.array(goal).flatten()
 
