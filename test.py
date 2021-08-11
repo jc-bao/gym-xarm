@@ -3,9 +3,8 @@ import os
 import gym
 import numpy as np
 import gym_xarm
-
-# env = gym.make('FetchPickAndPlace-v1') # FetchPickAndPlace-v0
-env = gym.make('XarmPDStackTower-v0') # FetchPickAndPlace-v0
+# FetchPickAndPlace-v0 XarmPDStackTower-v0 XarmPDPushWithDoor-v0
+env = gym.make('XarmPDPushWithDoor-v0') 
 agent = lambda ob: env.action_space.sample()
 ob = env.reset()
 for _ in range(env._max_episode_steps*100):
@@ -14,4 +13,5 @@ for _ in range(env._max_episode_steps*100):
     a = agent(ob)
     assert env.action_space.contains(a)
     (ob, _reward, done, _info) = env.step(a)
+    time.sleep(0.02)
 env.close()

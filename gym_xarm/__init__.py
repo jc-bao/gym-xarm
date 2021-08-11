@@ -23,3 +23,7 @@ register(
     id='XarmPDStackTower-v0',
     entry_point='gym_xarm.envs:XarmPDStackTowerEnv',
 )
+register(
+    id='XarmPDPushWithDoor-v0',
+    entry_point='gym_xarm.envs:XarmPDPushWithDoorEnv',
+)
