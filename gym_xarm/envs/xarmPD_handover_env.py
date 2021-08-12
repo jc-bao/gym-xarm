@@ -26,10 +26,10 @@ class XarmPDHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-1.6, -0.3 ,0.125]), high=np.array([0.3, 0.3, 0.4]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([-0.3, -0.3 ,0.125]), high=np.array([1.6, 0.3, 0.4]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.8, -0.3, 0.025]),high=np.array([1.4, 0.3, 0.27]), dtype=np.float32)
-        self.obj_space = spaces.Box(low=np.array([-1.4, -0.3]), high=np.array([-0.8, 0.3]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.4, 0.3 ,0.125]), high=np.array([0.2, 0.3, 0.4]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([-0.2, -0.3 ,0.125]), high=np.array([0.4, 0.3, 0.4]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.3, -0.3, 0.025]),high=np.array([0.4, 0.3, 0.27]), dtype=np.float32)
+        self.obj_space = spaces.Box(low=np.array([-0.4, -0.3]), high=np.array([-0.3, 0.3]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.021, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
