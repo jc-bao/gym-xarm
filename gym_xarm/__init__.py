@@ -35,5 +35,11 @@ register(
     id='XarmPDHandover-v0',
     entry_point='gym_xarm.envs:XarmPDHandover',
 )
-
-
+register(
+    id='XarmPDHandover-v1',
+    entry_point='gym_xarm.envs:XarmPDHandoverDense',
+)
+register(
+    id='XarmPDHandoverNoGoal-v1',
+    entry_point='gym_xarm.envs:XarmPDHandoverDenseNoGoal',
+)

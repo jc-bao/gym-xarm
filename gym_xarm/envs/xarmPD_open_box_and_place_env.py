@@ -165,6 +165,8 @@ class XarmPDOpenBoxAndPlaceEnv(gym.GoalEnv):
             p.setJointMotorControl2(self.xarm_1, i, p.POSITION_CONTROL, jointPoses_1[i-1]) # max=1200
             p.setJointMotorControl2(self.xarm_2, i, p.POSITION_CONTROL, jointPoses_2[i-1]) # max=1200
         p.setJointMotorControl2(self.xarm_1, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_1)
+        p.setJointMotorControl2(self.xarm_1, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_1)
+        p.setJointMotorControl2(self.xarm_2, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_2)
         p.setJointMotorControl2(self.xarm_2, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_2)
         # add constraints to door of box manully 
         cur_box_hinge_pos = p.getJointState(self.box, 0)[0]
