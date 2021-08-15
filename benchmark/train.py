@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import gym
 import gym_xarm
 
-from stable_baselines3 import SAC, HerReplayBuffer
+from stable_baselines3 import A2C, HerReplayBuffer
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvStepReturn, VecEnvWrapper
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common import results_plotter
 from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_results
@@ -45,6 +46,22 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
         return True
 
+class VecExtractDictObs(VecEnvWrapper):
+    def __init__(self, venv: VecEnv, key: str):
+        self.key = key
+        super().__init__(venv=venv, observation_space=venv.observation_space.spaces[self.key])
+
+    def reset(self) -> np.ndarray:
+        obs = self.venv.reset()
+        return obs[self.key]
+
+    def step_async(self, actions: np.ndarray) -> None:
+        self.venv.step_async(actions)
+
+    def step_wait(self) -> VecEnvStepReturn:
+        obs, reward, done, info = self.venv.step_wait()
+        return obs[self.key], reward, done, info
+
 if __name__ == '__main__':
     reward_type = "dense"
     env_id = "XarmPDHandoverNoGoal-v1"
@@ -59,10 +76,10 @@ if __name__ == '__main__':
 
     # create model
     if reward_type == "dense":
-        model = SAC('MultiInputPolicy', env, verbose=1)
+        model = A2C('MlpPolicy', env, verbose=1)
     elif reward_type == "sparse":
-        model = SAC(
-            "MultiInputPolicy",
+        model = A2C(
+            "MlpPolicy",
             env,
             replay_buffer_class=HerReplayBuffer,
             replay_buffer_kwargs=dict(

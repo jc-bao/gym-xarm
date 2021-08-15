@@ -32,6 +32,12 @@ In the test environment, the robot will take random actions.
 python test.py
 ```
 
+### Training with Stable-Baseline3
+
+```python
+python train.py --algo a2c --env XarmPDHandoverDenseEnvNoGoal-v1 
+```
+
 ## Demo
 
 | XarmReach-v0                                                 | XarmPickAndPlace-v0                                          | XarmPDPickAndPlace-v0                                        |

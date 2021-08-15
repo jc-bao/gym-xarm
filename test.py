@@ -4,7 +4,7 @@ import gym
 import numpy as np
 import gym_xarm
 # FetchPickAndPlace-v0 XarmPDStackTower-v0 XarmPDPushWithDoor-v0 XarmPDOpenBoxAndPlace-v0 XarmPDHandover-v0
-env = gym.make('XarmPDHandover-v0') 
+env = gym.make('XarmPDHandoverNoGoal-v1') 
 agent = lambda ob: env.action_space.sample()
 ob = env.reset()
 for _ in range(env._max_episode_steps*100):
