@@ -16,14 +16,17 @@ except:
 
 '''
 Uses Panda Gripper to handoover
+TODO:
+[] Avoid Hit and Fly
+[] Constrain Arm space
 '''
 
 class XarmPDHandoverDenseNoGoal(gym.Env):
-    _first_client = True
+    _num_client = 0
     @property
-    def first_client(self): return type(self)._first_client
-    @first_client.setter
-    def first_client(self, val): type(self)._first_client = val
+    def num_client(self): return type(self)._num_client
+    @num_client.setter
+    def num_client(self, val): type(self)._num_client = val
     def __init__(self, render=False):
         # bullet paramters
         self.if_render = render
@@ -54,9 +57,11 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.startOrientation_1 = pybullet.getQuaternionFromEuler([0,0,0])
         self.startOrientation_2 = pybullet.getQuaternionFromEuler([0,0,np.pi])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
+        self.eff_init_pos_1 = [-0.1533553318932806, 0.0, 0.39623933650379695]
+        self.eff_init_pos_2 = [0.15335533190237485, 0.0, 0.39623933650460946]
         self.lego_length = 0.2
         # connect bullet
-        if self.first_client:
+        if self.num_client == 1:
             if self.if_render:
                 self._p = bullet_client.BulletClient(connection_mode=pybullet.GUI)
                 self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, False)
@@ -124,11 +129,13 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.action_space = spaces.Box(-1., 1., shape=(8,), dtype='float32')
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
         self._p.stepSimulation()
-        if self.first_client and self.if_render:
+        if self.num_client==1 and self.if_render:
             self._p.setRealTimeSimulation(True)
             self._p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, True)
-            self.first_client=False
+        self.num_client+=1
+        print('DEBUG: init pos1:', self._p.getLinkState(self.xarm_1, self.arm_eef_index)[0])
+        print('DEBUG: init pos2:', self._p.getLinkState(self.xarm_2, self.arm_eef_index)[0])
 
     # basic methods
     # -------------------------
@@ -222,6 +229,11 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self._p.setJointMotorControl2(self.xarm_1, self.finger2_index, self._p.POSITION_CONTROL, new_gripper_pos_1)
         self._p.setJointMotorControl2(self.xarm_2, self.finger1_index, self._p.POSITION_CONTROL, new_gripper_pos_2)
         self._p.setJointMotorControl2(self.xarm_2, self.finger2_index, self._p.POSITION_CONTROL, new_gripper_pos_2)
+        # reset lego pos to aviod fly away
+        for i in range(self.num_obj):
+            lego_pos = np.clip(self._p.getBasePositionAndOrientation(self.legos[i])[0],[-0.4, -0.3, 0], [0.4, 0.3, 10])
+            lego_ori = np.array(self._p.getBasePositionAndOrientation(self.legos[i])[1])
+            self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, lego_ori)
 
     def _get_obs(self):
         # robot state
@@ -259,9 +271,19 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
     def _reset_sim(self):
         self.num_steps = 0
         # reset arm
-        for i in range(self.num_joints):
+        '''
+        This way not work, reason still investigating...
+        for i in range(self.num_joints): 
             self._p.resetJointState(self.xarm_1, i, self.joint_init_pos[i])
             self._p.resetJointState(self.xarm_2, i, self.joint_init_pos[i])
+        '''
+        for _ in range(5): 
+            jointPoses_1 = self._p.calculateInverseKinematics(self.xarm_1, self.arm_eef_index, self.eff_init_pos_1, [1,0,0,0], maxNumIterations = self.n_substeps)
+            jointPoses_2 = self._p.calculateInverseKinematics(self.xarm_2, self.arm_eef_index, self.eff_init_pos_2, [1,0,0,0], maxNumIterations = self.n_substeps)
+            for i in range(1, self.arm_eef_index):
+                self._p.setJointMotorControl2(self.xarm_1, i, self._p.POSITION_CONTROL, jointPoses_1[i-1]) # max=1200
+                self._p.setJointMotorControl2(self.xarm_2, i, self._p.POSITION_CONTROL, jointPoses_2[i-1]) # max=1200
+            self._p.stepSimulation()
         # randomize position of lego
         for i in range(self.num_obj):
             lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))

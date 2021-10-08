@@ -72,7 +72,7 @@ class XarmPDHandover(gym.GoalEnv):
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm_1 = p.loadURDF(fullpath, self.startPos_1, self.startOrientation_1, useFixedBase=True)
-        self.xarm_2 = p.loadURDF(fullpath, self.startPos_2, self.startOrientation_2, useFixedBase=True)
+        self.xarm_2 = p.loadURDF(fullpath, self.startPos_2, self.startOrientation_1, useFixedBase=True)
         c = p.createConstraint(self.xarm_1,self.finger1_index,self.xarm_1,self.finger2_index,jointType=p.JOINT_GEAR,jointAxis=[1, 0, 0],parentFramePosition=[0, 0, 0],childFramePosition=[0, 0, 0])
         p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
         c = p.createConstraint(self.xarm_2,self.finger1_index,self.xarm_2,self.finger2_index,jointType=p.JOINT_GEAR,jointAxis=[1, 0, 0],parentFramePosition=[0, 0, 0],childFramePosition=[0, 0, 0])
