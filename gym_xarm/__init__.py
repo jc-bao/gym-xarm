@@ -16,6 +16,10 @@ register(
     entry_point='gym_xarm.envs:XarmReachEnv',
 )
 register(
+    id='XarmReach-v1',
+    entry_point='gym_xarm.envs:XarmReachDense',
+)
+register(
     id='XarmPDRearrange-v0',
     entry_point='gym_xarm.envs:XarmPDRearrangeEnv',
 )
