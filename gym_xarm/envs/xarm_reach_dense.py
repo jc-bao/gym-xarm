@@ -63,6 +63,7 @@ class XarmReachDense(gym.Env):
     # basic methods
     # -------------------------
     def step(self, action):
+        self.num_steps = self.num_steps + 1
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         p.setGravity(0,0,-9.8)
@@ -72,7 +73,7 @@ class XarmReachDense(gym.Env):
             'is_success': self._is_success(obs[:3], self.goal),
         }
         reward = self.compute_reward(obs[:3], self.goal, info)
-        done = info['is_success']
+        done = (self.num_steps >= self._max_episode_steps)
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
@@ -129,6 +130,7 @@ class XarmReachDense(gym.Env):
         ))
 
     def _reset_sim(self):
+        self.num_steps = 0
         # reset arm
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])
