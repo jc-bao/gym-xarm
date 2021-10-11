@@ -72,7 +72,7 @@ class XarmReachDense(gym.Env):
             'is_success': self._is_success(obs[:3], self.goal),
         }
         reward = self.compute_reward(obs[:3], self.goal, info)
-        done = False
+        done = info['is_success']
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
