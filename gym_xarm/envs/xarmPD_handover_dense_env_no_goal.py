@@ -27,7 +27,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self, render=False):
+    def __init__(self, render=True):
         # bullet paramters
         self.if_render = render
         self.timeStep=1./60
@@ -43,7 +43,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'dense'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.4, 0.3 ,0.125]), high=np.array([0.1, 0.3, 0.4]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.4, -0.3 ,0.125]), high=np.array([0.1, 0.3, 0.4]), dtype=np.float32)
         self.pos_space_2 = spaces.Box(low=np.array([-0.1, -0.3 ,0.125]), high=np.array([0.4, 0.3, 0.4]), dtype=np.float32)
         self.goal_space = spaces.Box(low=np.array([0.3, -0.3, 0.025]),high=np.array([0.4, 0.3, 0.27]), dtype=np.float32)
         self.obj_space = spaces.Box(low=np.array([-0.35, -0.3]), high=np.array([-0.25, 0.3]), dtype=np.float32)
