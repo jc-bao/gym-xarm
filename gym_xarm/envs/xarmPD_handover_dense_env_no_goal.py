@@ -27,7 +27,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self, render=True):
+    def __init__(self, render=False):
         # bullet paramters
         self.if_render = render
         self.timeStep=1./60
