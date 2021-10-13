@@ -229,11 +229,12 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self._p.setJointMotorControl2(self.xarm_1, self.finger2_index, self._p.POSITION_CONTROL, new_gripper_pos_1)
         self._p.setJointMotorControl2(self.xarm_2, self.finger1_index, self._p.POSITION_CONTROL, new_gripper_pos_2)
         self._p.setJointMotorControl2(self.xarm_2, self.finger2_index, self._p.POSITION_CONTROL, new_gripper_pos_2)
-        # reset lego pos to aviod fly away
+        # reset lego pos to aviod fly away and aviod change direction
         for i in range(self.num_obj):
             lego_pos = np.clip(self._p.getBasePositionAndOrientation(self.legos[i])[0],[-0.4, -0.3, 0], [0.4, 0.3, 10])
             lego_ori = np.array(self._p.getBasePositionAndOrientation(self.legos[i])[1])
-            self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, lego_ori)
+            self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
+
 
     def _get_obs(self):
         # robot state
