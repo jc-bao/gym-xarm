@@ -264,7 +264,8 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         obs = np.concatenate((
             obj_pos, obj_rot, obj_velp, obj_velr,
             grip_pos_1, grip_velp_1, gripper_pos_1, gripper_vel_1,
-            grip_pos_2, grip_velp_2, gripper_pos_2, gripper_vel_2
+            grip_pos_2, grip_velp_2, gripper_pos_2, gripper_vel_2,
+            self.goal
         ))
         return obs
 
