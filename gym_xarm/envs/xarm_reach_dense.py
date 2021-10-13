@@ -140,7 +140,7 @@ class XarmReachDense(gym.Env):
         grip_velp = np.array(grip_state[6])
         # observation
         return np.concatenate((
-                    grip_pos, grip_velp, gripper_pos, gripper_vel
+                    grip_pos, grip_velp, gripper_pos, gripper_vel, self.goal
         ))
 
     def _reset_sim(self):
