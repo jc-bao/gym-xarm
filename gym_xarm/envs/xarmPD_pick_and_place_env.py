@@ -132,10 +132,8 @@ class XarmPDPickAndPlaceEnv(gym.GoalEnv):
         jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, new_pos, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
-        p.setJointMotorControl2(self.xarm_1, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_1)
-        p.setJointMotorControl2(self.xarm_1, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_1)
-        p.setJointMotorControl2(self.xarm_2, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_2)
-        p.setJointMotorControl2(self.xarm_2, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_2)
+        p.setJointMotorControl2(self.xarm, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos)
+        p.setJointMotorControl2(self.xarm, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos)
 
     def _get_obs(self):
         # robot state

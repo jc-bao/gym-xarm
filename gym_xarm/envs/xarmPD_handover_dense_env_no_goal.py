@@ -27,7 +27,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self, render=False):
+    def __init__(self, render=True):
         # bullet paramters
         self.if_render = render
         self.timeStep=1./60
@@ -134,8 +134,6 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
             self._p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, True)
         self.num_client+=1
-        print('DEBUG: init pos1:', self._p.getLinkState(self.xarm_1, self.arm_eef_index)[0])
-        print('DEBUG: init pos2:', self._p.getLinkState(self.xarm_2, self.arm_eef_index)[0])
 
     # basic methods
     # -------------------------
