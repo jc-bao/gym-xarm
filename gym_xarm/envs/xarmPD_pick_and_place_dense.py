@@ -35,6 +35,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.startPos = [0, 0, 0]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*5
+        self.eef2grip_offset = [0,0,0.088-0.021]
         # training parameters
         self._max_episode_steps = 50
         
@@ -100,11 +101,25 @@ class XarmPDPickAndPlaceDense(gym.Env):
     # -------------------------
 
     def compute_reward(self, achieved_goal, goal, info):
-        d = np.linalg.norm(achieved_goal - goal, axis=-1)
+        ''' dense reward
+        1. Xarm1 Reaching [0, 0.25]
+        2. Xarm1 Grasping {0, 0.5}
+        3. Xarm1 Lefting {0, 1.0}
+        4. Xarm1 Hovering {0, [1.0, 1.25]}
+        '''
+        d_og = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+            return -(d_og > self.distance_threshold).astype(np.float32)
         else:
-            return -d
+            if_grasp = len(p.getContactPoints(self.xarm, self.lego[0], self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego[0], self.finger2_index))!=0
+            grip_pos = np.array(p.getLinkState(self.xarm, self.gripper_base_index)[0])-self.eef2grip_offset
+            d_ao = np.linalg.norm(grip_pos - achieved_goal + [0.06,0,0])
+            if not if_grasp:
+                return 0.25 * (1 - np.tanh(1.0 * d_ao))
+            elif achieved_goal[2] > 0.05: 
+                return (1.0 + 0.25*(1 - np.tanh(1.0 * d_og)))
+            else:
+                return 0.5
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
