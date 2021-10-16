@@ -111,7 +111,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         if self.reward_type == 'sparse':
             return -(d_og > self.distance_threshold).astype(np.float32)
         else:
-            if_grasp = len(p.getContactPoints(self.xarm, self.lego[0], self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego[0], self.finger2_index))!=0
+            if_grasp = len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0
             grip_pos = np.array(p.getLinkState(self.xarm, self.gripper_base_index)[0])-self.eef2grip_offset
             d_ao = np.linalg.norm(grip_pos - achieved_goal + [0.06,0,0])
             if not if_grasp:
