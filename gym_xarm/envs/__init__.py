@@ -1,5 +1,6 @@
 from gym_xarm.envs.xarm_pick_and_place_env import XarmPickAndPlaceEnv
 from gym_xarm.envs.xarmPD_pick_and_place_env import XarmPDPickAndPlaceEnv
+from gym_xarm.envs.xarmPD_pick_and_place_dense import XarmPDPickAndPlaceDense
 from gym_xarm.envs.xarm_reach_env import XarmReachEnv
 from gym_xarm.envs.xarm_reach_dense import XarmReachDense
 from gym_xarm.envs.xarmPD_rearrange_env import XarmPDRearrangeEnv

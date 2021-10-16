@@ -6,12 +6,11 @@ import numpy as np
 import pybullet as p
 import pybullet_data as pd
 
-class XarmReachDense(gym.Env):
-    _num_client = 0
-    @property
-    def num_client(self): return type(self)._num_client
-    @num_client.setter
-    def num_client(self, val): type(self)._num_client = val
+'''
+Uses Panda Gripper
+'''
+
+class XarmPDPickAndPlaceDense(gym.Env):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
@@ -19,29 +18,28 @@ class XarmReachDense(gym.Env):
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
         self.distance_threshold=0.05
-        self.num_joints = 17
-        self.gripper_driver_index = 10
-        self.gripper_base_index = 9
+        self.num_joints = 13
         self.arm_eef_index = 8
+        self.gripper_base_index = 9
+        self.finger1_index = 10
+        self.finger2_index = 11
+        self.grasp_index = 12
         self.reward_type = 'dense'
-        self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
-        self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
-        self.max_vel = 0.2
-        self.max_gripper_vel = 20
+        self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.125]), high=np.array([0.5, 0.3, 0.4]))
+        self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
+        self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))
+        self.gripper_space = spaces.Box(low=0.021, high=0.04, shape=[1])
+        self.max_vel = 0.25
+        self.max_gripper_vel = 1
         self.height_offset = 0.025
         self.startPos = [0, 0, 0]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
-        self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
+        self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*5
         # training parameters
         self._max_episode_steps = 50
+        
         # connect bullet
-        if self.num_client == 0:
-            p.connect(p.GUI) #or p.DIRECT for non-graphical version
-            p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
-            p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-        else:
-            p.connect(p.DIRECT)
-        self.num_client+=1
+        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
         self.if_render = False
 
         # bullet setup
@@ -51,10 +49,15 @@ class XarmReachDense(gym.Env):
         p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
         # load table
         self.table = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
+        # load lego
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_cube.urdf')
+        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+        self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
-        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7.urdf')
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm = p.loadURDF(fullpath, self.startPos, self.startOrientation, useFixedBase=True)
-        # jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, self.startGripPos, [1,0,0,0])[:self.arm_eef_index]
+        c = p.createConstraint(self.xarm,self.finger1_index,self.xarm,self.finger2_index,jointType=p.JOINT_GEAR,jointAxis=[1, 0, 0],parentFramePosition=[0, 0, 0],childFramePosition=[0, 0, 0])
+        p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])
         # load goal
@@ -70,25 +73,26 @@ class XarmReachDense(gym.Env):
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
 
         p.stepSimulation()
+        p.setRealTimeSimulation(True)
 
     # basic methods
     # -------------------------
     def step(self, action):
-        self.num_steps = self.num_steps + 1
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         p.setGravity(0,0,-9.8)
         p.stepSimulation()
         obs = self._get_obs()
         info = {
-            'is_success': self._is_success(obs[:3], self.goal),
+            'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
-        reward = self.compute_reward(obs[:3], self.goal, info)
-        done = (self.num_steps >= self._max_episode_steps)
+        reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        done = False
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
     def reset(self):
+        super(XarmPDPickAndPlaceEnv, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
@@ -101,7 +105,6 @@ class XarmReachDense(gym.Env):
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
         else:
-            print('[DEBUG]distance=',d)
             return -d
 
     def seed(self, seed=None):
@@ -109,10 +112,8 @@ class XarmReachDense(gym.Env):
         return [seed]
 
     def render(self):
+        # p.connect(p.GUI)
         self.if_render = True
-
-    def close(self):
-        p.disconnect()
 
     # RobotEnv method
     # -------------------------
@@ -122,33 +123,43 @@ class XarmReachDense(gym.Env):
         cur_pos = np.array(p.getLinkState(self.xarm, self.arm_eef_index)[0])
         new_pos = cur_pos + np.array(action[:3]) * self.max_vel * self.dt
         new_pos = np.clip(new_pos, self.pos_space.low, self.pos_space.high)
-        cur_gripper_pos = p.getJointState(self.xarm, self.gripper_driver_index)[0]
-        new_gripper_pos = cur_gripper_pos + action[3]*self.dt * self.max_gripper_vel
+        cur_gripper_pos = p.getJointState(self.xarm, self.finger1_index)[0]
+        new_gripper_pos = np.clip(cur_gripper_pos + action[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
         jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, new_pos, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
-            p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1],force=5 * 240.)
-        for i in range(self.gripper_driver_index, self.num_joints):
-            p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, new_gripper_pos,force=5 * 240.)
+            p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
+        p.setJointMotorControl2(self.xarm, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos)
+        p.setJointMotorControl2(self.xarm, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos)
 
     def _get_obs(self):
         # robot state
         robot_state = p.getJointStates(self.xarm, np.arange(0,self.num_joints))
         # gripper state
-        gripper_pos = np.array([robot_state[self.gripper_driver_index][0]])
-        gripper_vel = np.array([robot_state[self.gripper_driver_index][1]])
+        gripper_pos = np.array([robot_state[self.finger1_index][0]])
+        gripper_vel = np.array([robot_state[self.finger1_index][1]])
         grip_state = p.getLinkState(self.xarm, self.gripper_base_index, computeLinkVelocity=1)
         grip_pos = np.array(grip_state[0])
         grip_velp = np.array(grip_state[6])
+        # object state
+        obj_pos = np.array(p.getBasePositionAndOrientation(self.lego)[0])
+        obj_rot = np.array(p.getBasePositionAndOrientation(self.lego)[1])
+        obj_velp = np.array(p.getBaseVelocity(self.lego)[0]) - grip_velp
+        obj_velr = np.array(p.getBaseVelocity(self.lego)[1])
+        obj_rel_pos = obj_pos - grip_pos
         # observation
-        return np.concatenate((
-                    grip_pos, grip_velp, gripper_pos, gripper_vel, self.goal
+        obs = np.concatenate((
+                    obj_pos, obj_rel_pos, obj_rot, obj_velp, obj_velr,
+                    grip_pos, grip_velp, gripper_pos, gripper_vel
         ))
+        return np.concatenate(obs, self.goal)
 
     def _reset_sim(self):
-        self.num_steps = 0
         # reset arm
         for i in range(self.num_joints):
             p.resetJointState(self.xarm, i, self.joint_init_pos[i])
+        # randomize position of lego
+        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+        p.resetBasePositionAndOrientation(self.lego, lego_pos, self.startOrientation)
         p.stepSimulation()
         return True
 

@@ -13,6 +13,11 @@ register(
     max_episode_steps = 50,
 )
 register(
+    id='XarmPDPickAndPlace-v1',
+    entry_point='gym_xarm.envs:XarmPDPickAndPlaceEnv',
+    max_episode_steps = 50,
+)
+register(
     id='XarmReach-v0',
     entry_point='gym_xarm.envs:XarmReachEnv',
 )

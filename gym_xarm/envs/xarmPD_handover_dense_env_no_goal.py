@@ -61,7 +61,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.eff_init_pos_2 = [0.15335533190237485, 0.0, 0.39623933650460946]
         self.lego_length = 0.2
         # connect bullet
-        if self.num_client == 1:
+        if self.num_client == 0:
             if self.if_render:
                 self._p = bullet_client.BulletClient(connection_mode=pybullet.GUI)
                 self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, False)
@@ -129,7 +129,7 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.action_space = spaces.Box(-1., 1., shape=(8,), dtype='float32')
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
         self._p.stepSimulation()
-        if self.num_client==1 and self.if_render:
+        if self.num_client==0 and self.if_render:
             self._p.setRealTimeSimulation(True)
             self._p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, True)
