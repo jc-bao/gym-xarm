@@ -149,9 +149,9 @@ class XarmPDPickAndPlaceDense(gym.Env):
         # observation
         obs = np.concatenate((
                     obj_pos, obj_rel_pos, obj_rot, obj_velp, obj_velr,
-                    grip_pos, grip_velp, gripper_pos, gripper_vel
+                    grip_pos, grip_velp, gripper_pos, gripper_vel, self.goal
         ))
-        return np.concatenate(obs, self.goal)
+        return obs
 
     def _reset_sim(self):
         # reset arm
