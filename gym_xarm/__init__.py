@@ -14,7 +14,7 @@ register(
 )
 register(
     id='XarmPDPickAndPlace-v1',
-    entry_point='gym_xarm.envs:XarmPDPickAndPlaceEnv',
+    entry_point='gym_xarm.envs:XarmPDPickAndPlaceDense',
     max_episode_steps = 50,
 )
 register(
