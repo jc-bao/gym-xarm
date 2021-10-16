@@ -92,7 +92,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDPickAndPlaceEnv, self).reset()
+        super(XarmPDPickAndPlaceDense, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
