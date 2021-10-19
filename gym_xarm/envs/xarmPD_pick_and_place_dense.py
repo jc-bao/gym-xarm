@@ -11,7 +11,7 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceDense(gym.Env):
-    def __init__(self):
+    def __init__(self, render = False, action_type = 'discrete'):
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -25,6 +25,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'dense'
+        self.action_type = action_type
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.125]), high=np.array([0.5, 0.3, 0.4]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))
@@ -37,11 +38,23 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*5
         self.eef2grip_offset = [0,0,0.088-0.021]
         # training parameters
-        self._max_episode_steps = 50
+        if self.action_type == 'continous':
+            self._max_episode_steps = 50
+        elif self.action_type == 'discrete':
+            self._max_episode_steps = 100
+        else:
+            raise NotImplementedError
+
         
         # connect bullet
-        p.connect(p.DIRECT) #or p.DIRECT for non-graphical version
-        self.if_render = False
+        if render:
+            p.connect(p.GUI)
+            p.setRealTimeSimulation(True)
+            p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+        else:
+            p.connect(p.DIRECT)
 
         # bullet setup
         self.seed()
@@ -70,7 +83,41 @@ class XarmPDPickAndPlaceDense(gym.Env):
         # gym setup
         self.goal = self._sample_goal()
         obs = self._get_obs()
-        self.action_space = spaces.Box(-1., 1., shape=(4,), dtype='float32')
+        if self.action_type == 'continous':
+            ''' continous action space
+            [0]v_x   [1]v_y   [2]v_z   [3]gripper vel
+            '''
+            self.action_space = spaces.Box(-1., 1., shape=(4,), dtype='float32')
+        elif self.action_type == 'discrete':
+            ''' discrete action space
+            [0]v_x=-1 [1]v_x=-0.5 [2]v_x=0 [3]v_x=0.5 [4]v_x=1
+            [5]v_y=-1 [6]v_y=-0.5 [7]v_y=0 [8]v_y=0.5 [9]v_y=1
+            [10]v_z=-1 [11]v_z=-0.5 [12]v_z=0 [13]v_z=0.5 [14]v_z=1
+            [15]v_gripper = -1 [16]v_gripper = 0 [17]v_gripper = 1
+            '''
+            self.action_table = [
+                [-1, 0, 0, 0],
+                [-0.5, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0.5, 0, 0, 0],
+                [1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, -0.5, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0.5, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, -0.5, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0.5, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, -1],
+                [0, 0, 0, 0],
+                [0, 0, 0, 1],
+            ]
+            self.action_space = spaces.Discrete(18)
+        else:
+            raise NotImplementedError
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
 
         p.stepSimulation()
@@ -79,7 +126,6 @@ class XarmPDPickAndPlaceDense(gym.Env):
     # basic methods
     # -------------------------
     def step(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         p.setGravity(0,0,-9.8)
         p.stepSimulation()
@@ -125,20 +171,22 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def render(self):
-        # p.connect(p.GUI)
-        self.if_render = True
-
     # RobotEnv method
     # -------------------------
 
     def _set_action(self, action):
-        assert action.shape == (4,), 'action shape error'
+        if self.action_type == 'continous':
+            assert action.shape == (4,), 'action shape error'
+            vel_control = np.clip(action, self.action_space.low, self.action_space.high)
+        elif self.action_type == 'discrete':
+            vel_control = self.action_table[action]
+        else: 
+            raise NotImplementedError
         cur_pos = np.array(p.getLinkState(self.xarm, self.arm_eef_index)[0])
-        new_pos = cur_pos + np.array(action[:3]) * self.max_vel * self.dt
+        new_pos = cur_pos + np.array(vel_control[:3]) * self.max_vel * self.dt
         new_pos = np.clip(new_pos, self.pos_space.low, self.pos_space.high)
         cur_gripper_pos = p.getJointState(self.xarm, self.finger1_index)[0]
-        new_gripper_pos = np.clip(cur_gripper_pos + action[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
+        new_gripper_pos = np.clip(cur_gripper_pos + vel_control[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
         jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, new_pos, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
@@ -169,8 +217,11 @@ class XarmPDPickAndPlaceDense(gym.Env):
 
     def _reset_sim(self):
         # reset arm
-        for i in range(self.num_joints):
-            p.resetJointState(self.xarm, i, self.joint_init_pos[i])
+        for _ in range(5): 
+            jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, self.startPos, [1,0,0,0], maxNumIterations = self.n_substeps)
+            for i in range(1, self.arm_eef_index):
+                p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
+            p.stepSimulation()
         # randomize position of lego
         lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
         p.resetBasePositionAndOrientation(self.lego, lego_pos, self.startOrientation)
