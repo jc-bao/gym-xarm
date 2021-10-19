@@ -11,7 +11,9 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceDense(gym.Env):
-    def __init__(self, render = False, action_type = 'discrete'):
+    def __init__(self, render = False, action_type = 'discrete', use_naive_case = False):
+        # env parameters
+        self.num_steps = 0
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -41,7 +43,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         if self.action_type == 'continous':
             self._max_episode_steps = 50
         elif self.action_type == 'discrete':
-            self._max_episode_steps = 100
+            self._max_episode_steps = 50
         else:
             raise NotImplementedError
 
@@ -89,7 +91,8 @@ class XarmPDPickAndPlaceDense(gym.Env):
             '''
             self.action_space = spaces.Box(-1., 1., shape=(4,), dtype='float32')
         elif self.action_type == 'discrete':
-            ''' discrete action space
+            ''' 
+            discrete action space - 1
             [0]v_x=-1 [1]v_x=-0.5 [2]v_x=0 [3]v_x=0.5 [4]v_x=1
             [5]v_y=-1 [6]v_y=-0.5 [7]v_y=0 [8]v_y=0.5 [9]v_y=1
             [10]v_z=-1 [11]v_z=-0.5 [12]v_z=0 [13]v_z=0.5 [14]v_z=1
@@ -126,6 +129,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
     # basic methods
     # -------------------------
     def step(self, action):
+        self.num_steps += 1
         self._set_action(action)
         p.setGravity(0,0,-9.8)
         p.stepSimulation()
@@ -134,11 +138,12 @@ class XarmPDPickAndPlaceDense(gym.Env):
             'is_success': self._is_success(obs[:3], self.goal),
         }
         reward = self.compute_reward(obs[:3], self.goal, info)
-        done = False
+        done = info['is_success'] or self.num_steps == self._max_episode_steps
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
     def reset(self):
+        self.num_steps = 0
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
