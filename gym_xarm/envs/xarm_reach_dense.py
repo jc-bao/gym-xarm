@@ -12,7 +12,10 @@ class XarmReachDense(gym.Env):
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self):
+    def __init__(self, reward_type='dense'):
+        r'''
+        reward_type: 'dense' 'sparse' 'dense_diff'
+        '''
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -23,7 +26,7 @@ class XarmReachDense(gym.Env):
         self.gripper_driver_index = 10
         self.gripper_base_index = 9
         self.arm_eef_index = 8
-        self.reward_type = 'dense'
+        self.reward_type = reward_type
         self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
         self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
         self.max_vel = 0.2
@@ -35,7 +38,7 @@ class XarmReachDense(gym.Env):
         # training parameters
         self._max_episode_steps = 50
         # connect bullet
-        if self.num_client == 0:
+        if self.num_client == -1:
             p.connect(p.GUI) #or p.DIRECT for non-graphical version
             p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
@@ -91,6 +94,7 @@ class XarmReachDense(gym.Env):
     def reset(self):
         self._reset_sim()
         self.goal = self._sample_goal()
+        self.d_old = np.linalg.norm(p.getLinkState(self.xarm, self.gripper_base_index)[0] - self.goal, axis=-1)
         return self._get_obs()
 
     # GoalEnv methods
@@ -100,9 +104,13 @@ class XarmReachDense(gym.Env):
         d = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
-        else:
-            print('[DEBUG]distance=',d)
+        elif self.reward_type == 'dense':
             return -d
+        elif self.reward_type == 'dense_diff':
+            delta = self.d_old - d
+            self.d_old = d
+            return delta
+            
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
