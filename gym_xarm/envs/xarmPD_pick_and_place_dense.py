@@ -11,9 +11,11 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceDense(gym.Env):
-    def __init__(self, render = False, action_type = 'discrete', use_naive_case = False):
-        # env parameters
+    def __init__(self, render = False, action_type = 'multi_discrete', reward_type = 'sparse', init_grasp_rate = 0.5, goal_ground_rate = 0.5):
+        # env parameter
         self.num_steps = 0
+        self.init_grasp_rate = init_grasp_rate
+        self.goal_ground_rate = goal_ground_rate
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -26,26 +28,22 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.finger1_index = 10
         self.finger2_index = 11
         self.grasp_index = 12
-        self.reward_type = 'dense'
+        self.reward_type = reward_type
         self.action_type = action_type
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.125]), high=np.array([0.5, 0.3, 0.4]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))
-        self.gripper_space = spaces.Box(low=0.021, high=0.04, shape=[1])
+        self.gripper_space = spaces.Box(low=0.01, high=0.04, shape=[1])
         self.max_vel = 0.25
         self.max_gripper_vel = 1
         self.height_offset = 0.025
-        self.startPos = [0, 0, 0]
+        self.startBasePos = [0, 0, 0]
+        self.startGripperPos = [0.4, 0., 0.14]
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*5
         self.eef2grip_offset = [0,0,0.088-0.021]
         # training parameters
-        if self.action_type == 'continous':
-            self._max_episode_steps = 50
-        elif self.action_type == 'discrete':
-            self._max_episode_steps = 50
-        else:
-            raise NotImplementedError
+        self._max_episode_steps = 50
 
         
         # connect bullet
@@ -71,7 +69,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
-        self.xarm = p.loadURDF(fullpath, self.startPos, self.startOrientation, useFixedBase=True)
+        self.xarm = p.loadURDF(fullpath, self.startBasePos, self.startOrientation, useFixedBase=True)
         c = p.createConstraint(self.xarm,self.finger1_index,self.xarm,self.finger2_index,jointType=p.JOINT_GEAR,jointAxis=[1, 0, 0],parentFramePosition=[0, 0, 0],childFramePosition=[0, 0, 0])
         p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
         for i in range(self.num_joints):
@@ -91,8 +89,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
             '''
             self.action_space = spaces.Box(-1., 1., shape=(4,), dtype='float32')
         elif self.action_type == 'discrete':
-            ''' 
-            discrete action space - 1
+            ''' discrete action space
             [0]v_x=-1 [1]v_x=-0.5 [2]v_x=0 [3]v_x=0.5 [4]v_x=1
             [5]v_y=-1 [6]v_y=-0.5 [7]v_y=0 [8]v_y=0.5 [9]v_y=1
             [10]v_z=-1 [11]v_z=-0.5 [12]v_z=0 [13]v_z=0.5 [14]v_z=1
@@ -113,12 +110,13 @@ class XarmPDPickAndPlaceDense(gym.Env):
                 [0, 0, -0.5, 0],
                 [0, 0, 0, 0],
                 [0, 0, 0.5, 0],
-                [0, 0, 1, 0],
                 [0, 0, 0, -1],
                 [0, 0, 0, 0],
                 [0, 0, 0, 1],
             ]
             self.action_space = spaces.Discrete(18)
+        elif self.action_type == 'multi_discrete':
+            self.action_space = spaces.MultiDiscrete([20, 20, 20, 8])
         else:
             raise NotImplementedError
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
@@ -138,7 +136,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
             'is_success': self._is_success(obs[:3], self.goal),
         }
         reward = self.compute_reward(obs[:3], self.goal, info)
-        done = info['is_success'] or self.num_steps == self._max_episode_steps
+        done = (np.linalg.norm(obs[:3] - self.goal, axis=-1) < self.distance_threshold) or self.num_steps == self._max_episode_steps
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
@@ -146,6 +144,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.num_steps = 0
         self._reset_sim()
         self.goal = self._sample_goal()
+        self.d_old = np.linalg.norm(p.getBasePositionAndOrientation(self.lego)[0] - self.goal, axis=-1)
         return self._get_obs()
 
     # GoalEnv methods
@@ -161,16 +160,24 @@ class XarmPDPickAndPlaceDense(gym.Env):
         d_og = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
             return -(d_og > self.distance_threshold).astype(np.float32)
-        else:
+        elif self.reward_type == 'dense':
             if_grasp = len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0
             grip_pos = np.array(p.getLinkState(self.xarm, self.gripper_base_index)[0])-self.eef2grip_offset
             d_ao = np.linalg.norm(grip_pos - achieved_goal + [0.06,0,0])
             if not if_grasp:
                 return 0.25 * (1 - np.tanh(1.0 * d_ao))
-            elif achieved_goal[2] > 0.05: 
+            elif achieved_goal[2] > 0.05:
                 return (1.0 + 0.25*(1 - np.tanh(1.0 * d_og)))
             else:
                 return 0.5
+        elif self.reward_type == 'dense_o2g':
+            return -d_og
+        elif self.reward_type == 'dense_diff_o2g':
+            reward = self.d_old - self.d_og
+            self.d_old = self.d_og
+            return reward
+        else:
+            raise NotImplementedError
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -185,6 +192,8 @@ class XarmPDPickAndPlaceDense(gym.Env):
             vel_control = np.clip(action, self.action_space.low, self.action_space.high)
         elif self.action_type == 'discrete':
             vel_control = self.action_table[action]
+        elif self.action_type == 'multi_discrete':
+            vel_control = np.append(action[:3]/10 - 1, action[-1]/4 - 1)
         else: 
             raise NotImplementedError
         cur_pos = np.array(p.getLinkState(self.xarm, self.arm_eef_index)[0])
@@ -223,18 +232,23 @@ class XarmPDPickAndPlaceDense(gym.Env):
     def _reset_sim(self):
         # reset arm
         for _ in range(5): 
-            jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, self.startPos, [1,0,0,0], maxNumIterations = self.n_substeps)
+            jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, self.startGripperPos, [1,0,0,0], maxNumIterations = self.n_substeps)
             for i in range(1, self.arm_eef_index):
                 p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
             p.stepSimulation()
         # randomize position of lego
-        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+        if np.random.random() < self.init_grasp_rate: # init in hand
+            lego_pos = np.concatenate((self.startGripperPos[:2], [self.height_offset]))
+        else: 
+            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
         p.resetBasePositionAndOrientation(self.lego, lego_pos, self.startOrientation)
         p.stepSimulation()
         return True
 
     def _sample_goal(self):
         goal = np.array(self.goal_space.sample())
+        if np.random.random() < self.goal_ground_rate:
+            goal[-1] = self.goal_space.low[-1]
         p.resetBasePositionAndOrientation(self.sphere, goal, self.startOrientation)
         return goal.copy()
 

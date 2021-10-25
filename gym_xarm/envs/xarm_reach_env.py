@@ -8,7 +8,6 @@ import pybullet_data as pd
 
 class XarmReachEnv(gym.GoalEnv):
     def __init__(self):
-        # bullet paramters
         self.timeStep=1./240
         self.n_substeps = 20
         self.dt = self.timeStep*self.n_substeps
