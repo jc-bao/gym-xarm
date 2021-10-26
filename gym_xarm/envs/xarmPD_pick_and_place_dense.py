@@ -11,11 +11,12 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceDense(gym.Env):
-    def __init__(self, render = False, action_type = 'multi_discrete', reward_type = 'sparse', init_grasp_rate = 0.5, goal_ground_rate = 0.5):
+    def __init__(self, render = True, action_type = 'multi_discrete', reward_type = 'sparse', grasp_mode = 'easy' , init_grasp_rate = 0.5, goal_ground_rate = 0.5):
         # env parameter
         self.num_steps = 0
         self.init_grasp_rate = init_grasp_rate
         self.goal_ground_rate = goal_ground_rate
+        self.grasp_mode = grasp_mode # [TODO] add support to continous control, now only support multi discrete
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -30,7 +31,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.grasp_index = 12
         self.reward_type = reward_type
         self.action_type = action_type
-        self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.125]), high=np.array([0.5, 0.3, 0.4]))
+        self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.15]), high=np.array([0.5, 0.3, 0.4]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))
         self.gripper_space = spaces.Box(low=0.01, high=0.04, shape=[1])
@@ -116,7 +117,10 @@ class XarmPDPickAndPlaceDense(gym.Env):
             ]
             self.action_space = spaces.Discrete(18)
         elif self.action_type == 'multi_discrete':
-            self.action_space = spaces.MultiDiscrete([20, 20, 20, 8])
+            if self.grasp_mode == 'easy':
+                self.action_space = spaces.MultiDiscrete([20, 20, 20, 2])
+            else: 
+                self.action_space = spaces.MultiDiscrete([20, 20, 20, 8])
         else:
             raise NotImplementedError
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
@@ -193,14 +197,23 @@ class XarmPDPickAndPlaceDense(gym.Env):
         elif self.action_type == 'discrete':
             vel_control = self.action_table[action]
         elif self.action_type == 'multi_discrete':
-            vel_control = np.append(action[:3]/10 - 1, action[-1]/4 - 1)
+            if self.grasp_mode == 'easy':
+                vel_control = np.append(action[:3]/10 - 1, action[-1]) # grasp 0:open 1:close
+            else:
+                vel_control = np.append(action[:3]/10 - 1, action[-1]/4 - 1)
         else: 
             raise NotImplementedError
         cur_pos = np.array(p.getLinkState(self.xarm, self.arm_eef_index)[0])
         new_pos = cur_pos + np.array(vel_control[:3]) * self.max_vel * self.dt
         new_pos = np.clip(new_pos, self.pos_space.low, self.pos_space.high)
-        cur_gripper_pos = p.getJointState(self.xarm, self.finger1_index)[0]
-        new_gripper_pos = np.clip(cur_gripper_pos + vel_control[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
+        if self.grasp_mode == 'easy':
+            new_gripper_pos = 0.024 if vel_control[-1] else 0.04
+            friction = 100 if vel_control[-1] else 0
+            p.changeDynamics(self.xarm, self.finger1_index, lateralFriction = friction, spinningFriction = friction, rollingFriction = friction)
+            p.changeDynamics(self.xarm, self.finger2_index, lateralFriction = friction, spinningFriction = friction, rollingFriction = friction)
+        else:
+            cur_gripper_pos = p.getJointState(self.xarm, self.finger1_index)[0]
+            new_gripper_pos = np.clip(cur_gripper_pos + vel_control[3]*self.dt * self.max_gripper_vel, self.gripper_space.low, self.gripper_space.high)
         jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, new_pos, [1,0,0,0], maxNumIterations = self.n_substeps)
         for i in range(1, self.arm_eef_index):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
