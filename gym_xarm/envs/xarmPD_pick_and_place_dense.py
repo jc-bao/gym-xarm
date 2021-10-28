@@ -11,12 +11,12 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceDense(gym.Env):
-    def __init__(self, render = True, action_type = 'multi_discrete', reward_type = 'sparse', grasp_mode = 'easy' , init_grasp_rate = 0.5, goal_ground_rate = 0.5):
+    def __init__(self, config , render = False):
         # env parameter
         self.num_steps = 0
-        self.init_grasp_rate = init_grasp_rate
-        self.goal_ground_rate = goal_ground_rate
-        self.grasp_mode = grasp_mode # [TODO] add support to continous control, now only support multi discrete
+        self.init_grasp_rate = config['init_grasp_rate']
+        self.goal_ground_rate = config['goal_ground_rate']
+        self.grasp_mode = config['grasp_mode'] # [TODO] add support to continous control, now only support multi discrete
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
@@ -29,8 +29,8 @@ class XarmPDPickAndPlaceDense(gym.Env):
         self.finger1_index = 10
         self.finger2_index = 11
         self.grasp_index = 12
-        self.reward_type = reward_type
-        self.action_type = action_type
+        self.reward_type = config['reward_type']
+        self.action_type = config['action_type']
         self.pos_space = spaces.Box(low=np.array([0.3, -0.3 ,0.15]), high=np.array([0.5, 0.3, 0.4]))
         self.goal_space = spaces.Box(low=np.array([0.35, -0.25, 0.025]),high=np.array([0.45, 0.25, 0.27]))
         self.obj_space = spaces.Box(low=np.array([0.35, -0.25]), high=np.array([0.45, 0.25]))

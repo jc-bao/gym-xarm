@@ -11,7 +11,7 @@ Uses Panda Gripper
 '''
 
 class XarmPDPickAndPlaceEnv(gym.GoalEnv):
-    def __init__(self):
+    def __init__(self, config):
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
