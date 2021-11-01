@@ -12,7 +12,7 @@ class XarmReachDense(gym.Env):
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self, reward_type='dense'):
+    def __init__(self, config):
         r'''
         reward_type: 'dense' 'sparse' 'dense_diff'
         '''
@@ -26,7 +26,7 @@ class XarmReachDense(gym.Env):
         self.gripper_driver_index = 10
         self.gripper_base_index = 9
         self.arm_eef_index = 8
-        self.reward_type = reward_type
+        self.reward_type = config['reward_type']
         self.pos_space = spaces.Box(low=np.array([0.2, -0.4 ,0.2]), high=np.array([0.8, 0.4, 0.6]))
         self.goal_space = spaces.Box(low=np.array([0.3, -0.25, 0.3]),high=np.array([0.5, 0.25, 0.4]))
         self.max_vel = 0.2
