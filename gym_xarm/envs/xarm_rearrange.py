@@ -10,14 +10,14 @@ import pybullet_data as pd
 Uses Panda Gripper to rearragne
 '''
 
-class XarmPDStackTowerEnv(gym.GoalEnv):
+class XarmRearrangeEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
-        self.num_obj = 3
+        self.num_obj = 4
         self.distance_threshold=0.03 * self.num_obj
         self.num_joints = 13
         self.arm_eef_index = 8
@@ -113,7 +113,7 @@ class XarmPDStackTowerEnv(gym.GoalEnv):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDStackTowerEnv, self).reset()
+        super(XarmRearrangeEnv, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
@@ -212,9 +212,8 @@ class XarmPDStackTowerEnv(gym.GoalEnv):
 
     def _sample_goal(self):
         goal = [None]*self.num_obj
-        pos_xy = self.goal_space.sample()
         for i in range(self.num_obj):
-            goal[i] = np.concatenate((pos_xy, [self.height_offset*(2*i+1)]))
+            goal[i] = np.concatenate((self.goal_space.sample(), [self.height_offset]))
             p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
         return np.array(goal).flatten()
 

@@ -7,17 +7,17 @@ import pybullet as p
 import pybullet_data as pd
 
 '''
-Uses Panda Gripper to rearragne
+Uses Panda Gripper to open the box and pace the cube
 '''
 
-class XarmPDRearrangeEnv(gym.GoalEnv):
+class XarmOpenBoxAndPlaceEnv(gym.GoalEnv):
     def __init__(self):
         # bullet paramters
         self.timeStep=1./60
         self.n_substeps = 15
         self.dt = self.timeStep*self.n_substeps
         # robot parameters
-        self.num_obj = 4
+        self.num_obj = 1
         self.distance_threshold=0.03 * self.num_obj
         self.num_joints = 13
         self.arm_eef_index = 8
@@ -28,9 +28,9 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
         self.reward_type = 'sparse'
         self.pos_space_1 = spaces.Box(low=np.array([-0.4, -0.3 ,0.125]), high=np.array([0.3, 0.3, 0.4]), dtype=np.float32)
         self.pos_space_2 = spaces.Box(low=np.array([-0.3, -0.3 ,0.125]), high=np.array([0.4, 0.3, 0.4]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([-0.3, -0.2]),high=np.array([0.3, 0.2]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([-0.1, -0.1]),high=np.array([0.1, 0.1]), dtype=np.float32)
         self.obj_space = spaces.Box(low=np.array([-0.3, -0.2]), high=np.array([0.3, 0.2]), dtype=np.float32)
-        self.gripper_space = spaces.Box(low=0.021, high=0.04, shape=[1], dtype=np.float32)
+        self.gripper_space = spaces.Box(low=0.018, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
         self.height_offset = 0.025
@@ -41,6 +41,8 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*5
         # training parameters
         self._max_episode_steps = 50
+        # debug parametes
+        self.box_hinge_space = spaces.Box(low=0, high=2.2, shape=[1], dtype=np.float32)
         
         # connect bullet
         p.connect(p.GUI) #or p.DIRECT for non-graphical version
@@ -61,8 +63,14 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
         for i in range(self.num_obj):
             lg_v = p.createVisualShape(shapeType=p.GEOM_BOX, halfExtents = [0.025]*3, rgbaColor = self.colors[i])
             lg_c = p.createCollisionShape(shapeType=p.GEOM_BOX, halfExtents = [0.025]*3)
-            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+            pos_xy = self.obj_space.sample()
+            while (pos_xy<(self.goal_space.high+0.04)).all() and (pos_xy>(self.goal_space.low-0.04)).all():
+                pos_xy = self.obj_space.sample()
+            lego_pos = np.concatenate((pos_xy, [self.height_offset]))
             self.legos[i] = p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.1, basePosition=lego_pos)
+        # load box
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/box.urdf')
+        self.box = p.loadURDF(fullpath, [0,0,0], self.startOrientation_1, useFixedBase=True)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm_1 = p.loadURDF(fullpath, self.startPos_1, self.startOrientation_1, useFixedBase=True)
@@ -113,7 +121,7 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDRearrangeEnv, self).reset()
+        super(XarmOpenBoxAndPlaceEnv, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
@@ -160,6 +168,10 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
         p.setJointMotorControl2(self.xarm_1, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_1)
         p.setJointMotorControl2(self.xarm_2, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos_2)
         p.setJointMotorControl2(self.xarm_2, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos_2)
+        # add constraints to door of box manully 
+        cur_box_hinge_pos = p.getJointState(self.box, 0)[0]
+        cur_box_hinge_pos = np.clip(cur_box_hinge_pos, self.box_hinge_space.low, self.box_hinge_space.high)
+        p.resetJointState(self.box, 0, cur_box_hinge_pos)
 
     def _get_obs(self):
         # robot state
@@ -205,7 +217,10 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
             p.resetJointState(self.xarm_2, i, self.joint_init_pos[i])
         # randomize position of lego
         for i in range(self.num_obj):
-            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+            pos_xy = self.obj_space.sample()
+            while (pos_xy<(self.goal_space.high+0.04)).all() and (pos_xy>(self.goal_space.low-0.04)).all():
+                pos_xy = self.obj_space.sample()
+            lego_pos = np.concatenate((pos_xy, [self.height_offset]))
             p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
         p.stepSimulation()
         return True
@@ -213,7 +228,7 @@ class XarmPDRearrangeEnv(gym.GoalEnv):
     def _sample_goal(self):
         goal = [None]*self.num_obj
         for i in range(self.num_obj):
-            goal[i] = np.concatenate((self.goal_space.sample(), [self.height_offset]))
+            goal[i] = np.concatenate((self.goal_space.sample(), [self.height_offset+0.02]))
             p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
         return np.array(goal).flatten()
 

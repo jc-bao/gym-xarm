@@ -4,30 +4,25 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 import numpy as np
-import pybullet
 from pybullet_utils import bullet_client
 import pybullet_data as pd
-import pybullet_utils
+import pybullet
 try:
   if os.environ["PYBULLET_EGL"]:
     import pkgutil
 except:
   pass
-
 '''
 Uses Panda Gripper to handoover
-TODO:
-[] Avoid Hit and Fly
-[] Constrain Arm space
 '''
 
-class XarmPDHandoverDenseNoGoal(gym.Env):
+class XarmHandover(gym.GoalEnv):
     _num_client = 0
     @property
     def num_client(self): return type(self)._num_client
     @num_client.setter
     def num_client(self, val): type(self)._num_client = val
-    def __init__(self, render=True):
+    def __init__(self, render=False):
         # bullet paramters
         self.if_render = render
         self.timeStep=1./60
@@ -61,13 +56,10 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.eff_init_pos_2 = [0.15335533190237485, 0.0, 0.39623933650460946]
         self.lego_length = 0.2
         # connect bullet
-        if self.num_client == 0:
-            if self.if_render:
-                self._p = bullet_client.BulletClient(connection_mode=pybullet.GUI)
-                self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, False)
-                self._p.configureDebugVisualizer(self._p.COV_ENABLE_GUI, False)
-            else:
-                self._p = bullet_client.BulletClient(connection_mode=pybullet.DIRECT)
+        if self.num_client == 1 and self.if_render:
+            self._p = bullet_client.BulletClient(connection_mode=pybullet.GUI)
+            self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, False)
+            self._p.configureDebugVisualizer(self._p.COV_ENABLE_GUI, False)
         else:
             self._p = bullet_client.BulletClient(pybullet.DIRECT)
         # optionally enable EGL for faster headless rendering
@@ -127,9 +119,13 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         self.goal = self._sample_goal()
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(8,), dtype='float32')
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
+        self.observation_space = spaces.Dict(dict(
+            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+        ))
         self._p.stepSimulation()
-        if self.num_client==0 and self.if_render:
+        if self.num_client==1 and self.if_render:
             self._p.setRealTimeSimulation(True)
             self._p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, True)
@@ -138,24 +134,23 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
     # basic methods
     # -------------------------
     def step(self, action):
-        self.num_steps = self.num_steps + 1
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         self._p.stepSimulation()
         obs = self._get_obs()
         info = {
-            'is_success': self._is_success(obs[0:3], self.goal),
+            'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
-        reward = self.compute_reward(obs[0:3], self.goal, info)
-        done = (self.num_steps >= self._max_episode_steps)
-        # self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
+        reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        done = (self.num_steps == self._max_episode_steps) or info['is_success']
         return obs, reward, done, info
 
     def reset(self):
+        super(XarmHandover, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
-
+    
     def close(self):
         pybullet.disconnect(self._p._client)
 
@@ -233,7 +228,6 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
             lego_ori = np.array(self._p.getBasePositionAndOrientation(self.legos[i])[1])
             self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
 
-
     def _get_obs(self):
         # robot state
         robot_state_1 = self._p.getJointStates(self.xarm_1, np.arange(0,self.num_joints))
@@ -263,10 +257,13 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         obs = np.concatenate((
             obj_pos, obj_rot, obj_velp, obj_velr,
             grip_pos_1, grip_velp_1, gripper_pos_1, gripper_vel_1,
-            grip_pos_2, grip_velp_2, gripper_pos_2, gripper_vel_2,
-            self.goal
+            grip_pos_2, grip_velp_2, gripper_pos_2, gripper_vel_2
         ))
-        return obs
+        return {
+            'observation': obs.copy(),
+            'achieved_goal': np.squeeze(obj_pos.copy()),
+            'desired_goal': self.goal.copy()
+        }
 
     def _reset_sim(self):
         self.num_steps = 0
@@ -303,7 +300,6 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
         return (d < self.distance_threshold).astype(np.float32)
 
     def _run_demo(self):
-        self.reset()
         self._p.resetBasePositionAndOrientation(self.legos[0], [-0.3,0,0.025], self.startOrientation_1)
         # move-1
         for _ in range(200):
@@ -312,16 +308,16 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
                 self._p.setJointMotorControl2(self.xarm_1, i, self._p.POSITION_CONTROL, jointPoses_1[i-1]) # max=1200
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[Move-1]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[Move-1]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             time.sleep(0.02)
         for _ in range(20):
             self._p.setJointMotorControl2(self.xarm_1, self.finger1_index, self._p.POSITION_CONTROL, 0.023)
             self._p.setJointMotorControl2(self.xarm_1, self.finger2_index, self._p.POSITION_CONTROL, 0.023)
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[Grasp-1]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[Grasp-1]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             time.sleep(0.02)
         # move both
         for _ in range(200):
@@ -332,8 +328,8 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
                 self._p.setJointMotorControl2(self.xarm_2, i, self._p.POSITION_CONTROL, jointPoses_2[i-1]) # max=1200
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[Move Both]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[Move Both]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             time.sleep(0.02)
         # grasp
         for _ in range(20):
@@ -341,8 +337,8 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
             self._p.setJointMotorControl2(self.xarm_2, self.finger2_index, self._p.POSITION_CONTROL, 0.024)
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[Grasp-2]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[Grasp-2]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             time.sleep(0.02)
         # realse
         for _ in range(20):
@@ -353,8 +349,8 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
             self._p.setJointMotorControl2(self.xarm_1, self.finger2_index, self._p.POSITION_CONTROL, 0.04)
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[Release]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[Release]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             # self._p.addUserDebugText(str(reward),[0,0,0])
             time.sleep(0.02)
         # move-2
@@ -364,11 +360,11 @@ class XarmPDHandoverDenseNoGoal(gym.Env):
                 self._p.setJointMotorControl2(self.xarm_2, i, self._p.POSITION_CONTROL, jointPoses_2[i-1]) # max=1200
             self._p.stepSimulation()
             obs = self._get_obs()
-            info = {'is_success': self._is_success(obs[0:3], self.goal),}
-            print('[move-2]',self.compute_reward(obs[0:3], self.goal, info)*2.25)
+            info = {'is_success': self._is_success(obs['achieved_goal'], self.goal),}
+            print('[move-2]',self.compute_reward(obs['achieved_goal'], self.goal, info)*2.25)
             # self._p.addUserDebugText(str(reward),[0,0,0])
             time.sleep(0.02)
     
 if __name__ == '__main__':
-    env = XarmPDHandoverDenseNoGoal(True)
+    env = XarmHandover()
     env._run_demo()

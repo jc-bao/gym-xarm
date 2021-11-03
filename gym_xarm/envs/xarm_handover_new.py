@@ -16,7 +16,7 @@ except:
 Uses Panda Gripper to handoover
 '''
 
-class XarmPDHandover(gym.GoalEnv):
+class XarmHandover(gym.GoalEnv):
     _num_client = 0
     @property
     def num_client(self): return type(self)._num_client
@@ -25,9 +25,10 @@ class XarmPDHandover(gym.GoalEnv):
     def __init__(self, render=False):
         # bullet paramters
         self.if_render = render
-        self.timeStep=1./60
+        self.timeStep=1./240
         self.n_substeps = 15
         self.dt = self.timeStep*self.n_substeps
+
         # robot parameters
         self.num_obj = 1
         self.distance_threshold=0.03 * self.num_obj
@@ -55,6 +56,7 @@ class XarmPDHandover(gym.GoalEnv):
         self.eff_init_pos_1 = [-0.1533553318932806, 0.0, 0.39623933650379695]
         self.eff_init_pos_2 = [0.15335533190237485, 0.0, 0.39623933650460946]
         self.lego_length = 0.2
+        
         # connect bullet
         if self.num_client == 1 and self.if_render:
             self._p = bullet_client.BulletClient(connection_mode=pybullet.GUI)
@@ -79,6 +81,8 @@ class XarmPDHandover(gym.GoalEnv):
         self.num_steps = 0
         # bullet setup
         self.seed()
+        self._p.resetSimulation()
+        self._p.setTimeStep(self.timeStep)
         self._p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
         self._p.setAdditionalSearchPath(pd.getDataPath())
         self._p.setTimeStep(self.timeStep)
@@ -142,15 +146,17 @@ class XarmPDHandover(gym.GoalEnv):
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
-        done = False
-        # self._p.configureDebugVisualizer(self._p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
+        done = (self.num_steps == self._max_episode_steps) or info['is_success']
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPDHandover, self).reset()
+        super(XarmHandover, self).reset()
         self._reset_sim()
         self.goal = self._sample_goal()
         return self._get_obs()
+    
+    def close(self):
+        pybullet.disconnect(self._p._client)
 
     # GoalEnv methods
     # -------------------------
@@ -364,5 +370,5 @@ class XarmPDHandover(gym.GoalEnv):
             time.sleep(0.02)
     
 if __name__ == '__main__':
-    env = XarmPDHandover()
+    env = XarmHandover()
     env._run_demo()

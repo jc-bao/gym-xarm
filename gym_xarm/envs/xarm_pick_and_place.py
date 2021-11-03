@@ -10,7 +10,7 @@ import pybullet_data as pd
 Uses Panda Gripper
 '''
 
-class XarmPDPickAndPlaceDense(gym.Env):
+class XarmPickAndPlace(gym.GoalEnv):
     def __init__(self, config , render = False):
         # env parameter
         self.num_steps = 0
@@ -123,7 +123,11 @@ class XarmPDPickAndPlaceDense(gym.Env):
                 self.action_space = spaces.MultiDiscrete([20, 20, 20, 8])
         else:
             raise NotImplementedError
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype='float32')
+        self.observation_space = spaces.Dict(dict(
+            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+        ))
 
         p.stepSimulation()
         p.setRealTimeSimulation(True)
@@ -137,14 +141,15 @@ class XarmPDPickAndPlaceDense(gym.Env):
         p.stepSimulation()
         obs = self._get_obs()
         info = {
-            'is_success': self._is_success(obs[:3], self.goal),
+            'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
-        reward = self.compute_reward(obs[:3], self.goal, info)
+        reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         done = (np.linalg.norm(obs[:3] - self.goal, axis=-1) < self.distance_threshold) or self.num_steps == self._max_episode_steps
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
     def reset(self):
+        super(XarmPickAndPlace, self).reset()
         self.num_steps = 0
         self._reset_sim()
         self.goal = self._sample_goal()
@@ -163,7 +168,7 @@ class XarmPDPickAndPlaceDense(gym.Env):
         '''
         d_og = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
-            return -(d_og > self.distance_threshold).astype(np.float32)
+            return (d_og < self.distance_threshold).astype(np.float32)
         elif self.reward_type == 'dense':
             if_grasp = len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0
             grip_pos = np.array(p.getLinkState(self.xarm, self.gripper_base_index)[0])-self.eef2grip_offset
@@ -238,9 +243,13 @@ class XarmPDPickAndPlaceDense(gym.Env):
         # observation
         obs = np.concatenate((
                     obj_pos, obj_rel_pos, obj_rot, obj_velp, obj_velr,
-                    grip_pos, grip_velp, gripper_pos, gripper_vel, self.goal
+                    grip_pos, grip_velp, gripper_pos, gripper_vel
         ))
-        return obs
+        return {
+            'observation': obs.copy(),
+            'achieved_goal': np.squeeze(obj_pos.copy()),
+            'desired_goal': self.goal.copy()
+        }
 
     def _reset_sim(self):
         # reset arm

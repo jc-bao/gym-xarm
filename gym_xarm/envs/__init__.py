@@ -2,11 +2,8 @@ from gym_xarm.envs.xarm_pick_and_place_env import XarmPickAndPlaceEnv
 from gym_xarm.envs.xarmPD_pick_and_place_env import XarmPDPickAndPlaceEnv
 from gym_xarm.envs.xarmPD_pick_and_place_dense import XarmPDPickAndPlaceDense
 from gym_xarm.envs.xarm_reach_env import XarmReachEnv
-from gym_xarm.envs.xarm_reach_dense import XarmReachDense
 from gym_xarm.envs.xarmPD_rearrange_env import XarmPDRearrangeEnv
 from gym_xarm.envs.xarmPD_stack_tower_env import XarmPDStackTowerEnv
 from gym_xarm.envs.xarmPD_push_with_door_env import XarmPDPushWithDoorEnv
 from gym_xarm.envs.xarmPD_open_box_and_place_env import XarmPDOpenBoxAndPlaceEnv
 from gym_xarm.envs.xarmPD_handover_env import XarmPDHandover
-from gym_xarm.envs.xarmPD_handover_dense_env import XarmPDHandoverDense
-from gym_xarm.envs.xarmPD_handover_dense_env_no_goal import XarmPDHandoverDenseNoGoal
