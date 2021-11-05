@@ -2,7 +2,8 @@
 <robot name="table.urdf">
   <link name="baseLink">
     <contact>
-      <lateral_friction value="10.0"/>
+      <lateral_friction value="5.0"/>
+      <!-- <rolling_friction value="1.0"/> -->
     </contact>
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -21,8 +22,11 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0.6"/>
       <geometry>
-	 	<box size="1.5 1 0.05"/>
+        <box size="1.5 1 0.05"/>
       </geometry>
+      <surface>
+        <bounce restitution_coefficient = "1"/>
+      </surface>
     </collision>
 	<visual>
       <origin rpy="0 0 0" xyz="-0.65 -0.4 0.29"/>

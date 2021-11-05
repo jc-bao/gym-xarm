@@ -3,7 +3,7 @@
   <link name="legobrick">
     <contact>
       <lateral_friction value="10.0"/>
-      <rolling_friction value="0.0"/>
+      <rolling_friction value="10.0"/>
       <contact_cfm value="0.0"/>
       <contact_erp value="1.0"/>
     </contact>
