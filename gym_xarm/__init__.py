@@ -4,53 +4,13 @@ from gym.envs.registration import register
 logger = logging.getLogger(__name__)
 
 register(
-    id='XarmPickAndPlace-v0',
-    entry_point='gym_xarm.envs:XarmPickAndPlaceEnv',
+    id='XarmHandover-v0',
+    entry_point='gym_xarm.envs:XarmHandover',
+    max_episode_steps = 100,
 )
+
 register(
-    id='XarmPDPickAndPlace-v0',
-    entry_point='gym_xarm.envs:XarmPDPickAndPlaceEnv',
+    id='XarmPickAndPlace-v1',
+    entry_point='gym_xarm.envs:XarmPickAndPlace',
     max_episode_steps = 50,
-)
-register(
-    id='XarmPDPickAndPlace-v1',
-    entry_point='gym_xarm.envs:XarmPDPickAndPlaceDense',
-    max_episode_steps = 50,
-)
-register(
-    id='XarmReach-v0',
-    entry_point='gym_xarm.envs:XarmReachEnv',
-)
-register(
-    id='XarmReach-v1',
-    entry_point='gym_xarm.envs:XarmReachDense',
-)
-register(
-    id='XarmPDRearrange-v0',
-    entry_point='gym_xarm.envs:XarmPDRearrangeEnv',
-)
-register(
-    id='XarmPDStackTower-v0',
-    entry_point='gym_xarm.envs:XarmPDStackTowerEnv',
-)
-register(
-    id='XarmPDPushWithDoor-v0',
-    entry_point='gym_xarm.envs:XarmPDPushWithDoorEnv',
-)
-register(
-    id='XarmPDOpenBoxAndPlace-v0',
-    entry_point='gym_xarm.envs:XarmPDOpenBoxAndPlaceEnv',
-)
-register(
-    id='XarmPDHandover-v0',
-    entry_point='gym_xarm.envs:XarmPDHandover',
-    max_episode_steps = 50,
-)
-register(
-    id='XarmPDHandover-v1',
-    entry_point='gym_xarm.envs:XarmPDHandoverDense',
-)
-register(
-    id='XarmPDHandoverNoGoal-v1',
-    entry_point='gym_xarm.envs:XarmPDHandoverDenseNoGoal',
 )

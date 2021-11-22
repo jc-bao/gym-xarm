@@ -46,7 +46,7 @@ python train.py --algo a2c --env XarmPDHandoverDenseEnvNoGoal-v1
 | XarmPDStackTower-v0                                          | XarmPDRearrange-v0                                           | XarmPDPushWithDoor-v0                                        |
 | ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcozatwg5g60jg0d84qq02.gif) | ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcp15o238g60jg0d8e8102.gif) | ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcsbfz94dg60jg0d8hdt02.gif) |
 | XarmPDOpenBoxAndPlace-v0                                     | XarmPDHandover-v0                                            |                                                              |
-| ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcw0mkcerg60jg0d8hdt02.gif) | ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcxxtcb4ng60jg0d8x6p02.gif) |                                                              |
+| ![Large GIF (700x476)](https://tva1.sinaimg.cn/large/008i3skNly1gtcw0mkcerg60jg0d8hdt02.gif) | ![handover_demo](https://tva1.sinaimg.cn/large/008i3skNly1gwgz5n90r7g30f40dm7wl.gif)<br />![image-20211116142917846](https://tva1.sinaimg.cn/large/008i3skNly1gwgz697451j30vy0muabd.jpg) |                                                              |
 
 > ⚠️**Note**:
 >
