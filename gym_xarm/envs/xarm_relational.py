@@ -9,15 +9,17 @@ import time
 from gym.wrappers.monitoring import video_recorder
 
 '''
-Uses Panda Gripper
-[TODO] tune to make it successful at first grasp
+This environment is optimized for rlkit relational manipulation environment.
 '''
 
-class XarmPickAndPlace(gym.GoalEnv):
+class XarmRelational(gym.GoalEnv):
     def __init__(self, config):
         # env parameter
-        self.config = config
         self.num_steps = 0
+        self.init_grasp_rate = config['init_grasp_rate']
+        self.goal_ground_rate = config['goal_ground_rate']
+        self.reward_type = config['reward_type']
+        self.action_type = config['action_type']
         self.metadata = {
             "render.modes": ["rgb_array"],
             "video.frames_per_second": int(30),
@@ -64,13 +66,9 @@ class XarmPickAndPlace(gym.GoalEnv):
         #  table
         self.table = p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
         # load lego
-        self.colors = [np.random.sample(size = 3).tolist() + [1] for _ in range(self.config['num_obj'])]
-        self.legos = [None] * self.config['num_obj']
-        for i in range(self.config['num_obj']):
-            lg_v = self._p.createVisualShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04], rgbaColor = self.colors[i])
-            lg_c = self._p.createCollisionShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04])
-            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-            self.legos[i] = self._p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.5, basePosition=lego_pos, baseOrientation = self.startOrientation_1)
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_cube.urdf')
+        lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+        self.lego = p.loadURDF(fullpath,lego_pos)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm = p.loadURDF(fullpath, self.startBasePos, self.startOrientation, useFixedBase=True)
@@ -104,19 +102,19 @@ class XarmPickAndPlace(gym.GoalEnv):
         p.stepSimulation()
         obs = self._get_obs()
         info = {
-            'is_success': self._is_success(obs['achieved_goal'], self.goal.flatten()),
+            'is_success': self._is_success(obs['achieved_goal'], self.goal),
         }
-        reward = self.compute_reward(obs['achieved_goal'], self.goal.flatten(), info)
-        done = (np.linalg.norm(obs['achieved_goal'] - self.goal.flatten(), axis=-1) < self.distance_threshold) or self.num_steps == self._max_episode_steps
+        reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
+        done = (np.linalg.norm(obs['achieved_goal'] - self.goal, axis=-1) < self.distance_threshold) or self.num_steps == self._max_episode_steps
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, self.if_render) enble if want to control rendering 
         return obs, reward, done, info
 
     def reset(self):
-        super(XarmPickAndPlace, self).reset()
+        super(XarmPickAndPlaceNew, self).reset()
         self.num_steps = 0
         self._reset_sim()
         self.goal = self._sample_goal()
-        self.d_old = np.linalg.norm(p.getBasePositionAndOrientation(self.legos[0])[0] - self.goal[0], axis=-1)
+        self.d_old = np.linalg.norm(p.getBasePositionAndOrientation(self.lego)[0] - self.goal, axis=-1)
         return self._get_obs()
 
     def render(self, mode="rgb_array", width=500, height=500):
@@ -146,41 +144,13 @@ class XarmPickAndPlace(gym.GoalEnv):
     # -------------------------
 
     def compute_reward(self, achieved_goal, goal, info):
-        ''' dense reward
-        1. Xarm1 Reaching [0, 0.25]
-        2. Xarm1 Grasping {0, 0.5}
-        3. Xarm1 Lefting {0, 1.0}
-        4. Xarm1 Hovering {0, [1.0, 1.25]}
-        '''
-        subgoal_distances = self._subgoal_distances(achieved_goal, goal)
-        d_og = np.linalg.norm(achieved_goal - goal, axis=-1)
-        if self.config['reward_type'] == 'sparse':
-            return (d_og < self.distance_threshold).astype(np.float32)
-        elif self.config['reward_type'] == 'dense':
-            if_grasp = len(p.getContactPoints(self.xarm, self.legos[0], self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.legos[0], self.finger2_index))!=0
-            grip_pos = np.array(p.getLinkState(self.xarm, self.gripper_base_index)[0])-self.eef2grip_offset
-            d_ao = np.linalg.norm(grip_pos - achieved_goal + [0.06,0,0])
-            if not if_grasp:
-                return 0.25 * (1 - np.tanh(1.0 * d_ao))
-            elif achieved_goal[2] > 0.05:
-                return (1.0 + 0.25*(1 - np.tanh(1.0 * d_og)))
-            else:
-                return 0.5
-        elif self.config['reward_type'] == 'dense_o2g':
-            return -d_og
-        elif self.config['reward_type'] == 'dense_diff_o2g':
-            reward = self.d_old - self.d_og
-            self.d_old = self.d_og
-            return reward
-        elif self.config['reward_type'] == 'incremental':
-            # Using incremental reward for each block in correct position
-            reward = -np.sum([(d > self.distance_threshold).astype(np.float32) for d in subgoal_distances], axis=0)
-            reward = np.asarray(reward)
-            # If blocks are successfully aligned with goals, add a bonus for the gripper being away from the goals
-            np.putmask(reward, reward == 0, self._gripper_pos_far_from_goals(achieved_goal, goal))
-            return reward
-        else:
-            raise NotImplementedError
+        # Using incremental reward for each block in correct position
+        reward = -np.sum([(d > self.distance_threshold).astype(np.float32) for d in subgoal_distances], axis=0)
+        reward = np.asarray(reward)
+
+        # If blocks are successfully aligned with goals, add a bonus for the gripper being away from the goals
+        np.putmask(reward, reward == 0, self.gripper_pos_far_from_goals(achieved_goal, goal))
+        return reward
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -202,44 +172,37 @@ class XarmPickAndPlace(gym.GoalEnv):
             p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
         p.setJointMotorControl2(self.xarm, self.finger1_index, p.POSITION_CONTROL, new_gripper_pos, force=1000)
         p.setJointMotorControl2(self.xarm, self.finger2_index, p.POSITION_CONTROL, new_gripper_pos, force=1000)
-        if_grasp = np.any([len(p.getContactPoints(self.xarm, lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, lego, self.finger2_index))!=0 for lego in self.legos])
-        if if_grasp:
+        if len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0: # grasp success -> change friction
             p.changeDynamics(self.xarm, self.finger1_index, lateralFriction = 100)
             p.changeDynamics(self.xarm, self.finger2_index, lateralFriction = 100)
-        else:  # grasp success -> change friction
+        else:
             p.changeDynamics(self.xarm, self.finger1_index, lateralFriction = 1)
             p.changeDynamics(self.xarm, self.finger2_index, lateralFriction = 1)
 
     def _get_obs(self):
         # robot state
         robot_state = p.getJointStates(self.xarm, np.arange(0,self.num_joints))
+        # gripper state
         gripper_pos = np.array([robot_state[self.finger1_index][0]])
         gripper_vel = np.array([robot_state[self.finger1_index][1]])
         grip_state = p.getLinkState(self.xarm, self.gripper_base_index, computeLinkVelocity=1)
         grip_pos = np.array(grip_state[0])
         grip_velp = np.array(grip_state[6])
-        robot_state = np.concatenate(grip_pos, grip_velp, gripper_pos, gripper_vel)
         # object state
-        obj_state = np.array([])
-        achieved_goal = np.array([])
-        for lego in self.legos:
-            obj_pos = np.array(p.getBasePositionAndOrientation(lego)[0])
-            obj_rot = np.array(p.getBasePositionAndOrientation(lego)[1])
-            obj_velp = np.array(p.getBaseVelocity(lego)[0]) - grip_velp
-            obj_velr = np.array(p.getBaseVelocity(lego)[1])
-            obj_rel_pos = obj_pos - grip_pos
-            obj_state = np.concatenate((obj_state, obj_pos, obj_rot, obj_velp, obj_velr, obj_rel_pos))
-            achieved_goal = np.append(achieved_goal, obj_pos)
+        obj_pos = np.array(p.getBasePositionAndOrientation(self.lego)[0])
+        obj_rot = np.array(p.getBasePositionAndOrientation(self.lego)[1])
+        obj_velp = np.array(p.getBaseVelocity(self.lego)[0]) - grip_velp
+        obj_velr = np.array(p.getBaseVelocity(self.lego)[1])
+        obj_rel_pos = obj_pos - grip_pos
         # observation
-        # robot observation: 3xyz+1v+1d+1v=8 
-        # object observation: 3*5 = 15
-        obs = np.concatenate((robot_state, obj_state ))
-        # achieved goal
-        achieved_goal = np.append(achieved_goal, grip_pos)
+        obs = np.concatenate((
+                    obj_pos, obj_rel_pos, obj_rot, obj_velp, obj_velr,
+                    grip_pos, grip_velp, gripper_pos, gripper_vel
+        ))
         return {
             'observation': obs.copy(),
-            'achieved_goal': achieved_goal.copy(),
-            'desired_goal': self.goal.flatten().copy()
+            'achieved_goal': np.squeeze(obj_pos.copy()),
+            'desired_goal': self.goal.copy()
         }
 
     def _reset_sim(self):
@@ -251,63 +214,29 @@ class XarmPickAndPlace(gym.GoalEnv):
             p.setJointMotorControl2(self.xarm, self.finger1_index, p.POSITION_CONTROL, 0.02, force=1000)
             p.setJointMotorControl2(self.xarm, self.finger2_index, p.POSITION_CONTROL, 0.02, force=1000)
             p.stepSimulation()
-        # randomize position of legos
-        for lego in self.legos:
-            if np.random.random() < self.config['init_grasp_rate']: # init in hand
-                lego_pos = np.concatenate((self.startGripperPos[:2], [self.height_offset]))
-            else: 
-                lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-            p.resetBasePositionAndOrientation(lego, lego_pos, self.startOrientation)
+        # randomize position of lego
+        if np.random.random() < self.init_grasp_rate: # init in hand
+            lego_pos = np.concatenate((self.startGripperPos[:2], [self.height_offset]))
+        else: 
+            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+        p.resetBasePositionAndOrientation(self.lego, lego_pos, self.startOrientation)
         p.stepSimulation()
         return True
 
     def _sample_goal(self):
-        goal = [None]*self.config['num_obj']
-        # Goal type1: `air` any space avaliable
-        if self.config['goal_shape'] == 'air':
-            for i in range(self.config['num_obj']):
-                goal[i] = self.goal_space.sample()
-                # init in the ground by setting ground_rate
-                if np.random.random() < self.config['goal_ground_rate']:
-                    goal[i][-1] = self.goal_space.low[-1]
-                if i > 0:
-                    while min([np.linalg.norm(goal[i]-goal[j]) for j in range(i)]) < 0.05:
-                        goal[i] = self.goal_space.sample()
-        # Goal type2:  `tower` tower like
-        elif self.config['goal_shape'] == 'ground':
-            pos_xy = self.goal_space.sample()[:2]
-            for i in range(self.config['num_obj']):
-                goal[i] = np.concatenate((pos_xy, [self.height_offset*(2*i+1)]))
-            self._p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
-        # set goal position
-        for g in goal:
-            p.resetBasePositionAndOrientation(self.sphere, g, self.startOrientation)
-        return np.array(goal)
+        goal = np.array(self.goal_space.sample())
+        if np.random.random() < self.goal_ground_rate:
+            goal[-1] = self.goal_space.low[-1]
+        p.resetBasePositionAndOrientation(self.sphere, goal, self.startOrientation)
+        return goal.copy()
 
     def _is_success(self, achieved_goal, desired_goal):
         d = np.linalg.norm(achieved_goal - self.goal, axis=-1)
         return (d < self.distance_threshold).astype(np.float32)
 
-    def _subgoal_distances(self, goal_a, goal_b):
-        assert goal_a.shape == goal_b.shape
-        for i in range(self.config['num_obj'] - 1):
-            assert goal_a[..., i * 3:(i + 1) * 3].shape == goal_a[..., (i + 1) * 3:(i + 2) * 3].shape
-        return [
-            np.linalg.norm(goal_a[..., i * 3:(i + 1) * 3] - goal_b[..., i * 3:(i + 1) * 3], axis=-1) for i in
-            range(self.config['num_obj'])
-        ]
-
-    def _gripper_pos_far_from_goals(self, achieved_goal, goal):
-        gripper_pos = achieved_goal[..., -3:] # Get the grip position only
-        block_goals = goal[..., :-3] # Get all the goals EXCEPT the zero'd out grip position
-        distances = [
-            np.linalg.norm(gripper_pos - block_goals[..., i*3:(i+1)*3], axis=-1) for i in range(self.config['num_obj'])
-        ]
-        return np.all([d > self.distance_threshold * 2 for d in distances], axis=0)
-
     def _run_demo(self, recorder):
         self.reset()
-        p.resetBasePositionAndOrientation(self.legos[0], [0.4,0,0.025], self.startOrientation)
+        p.resetBasePositionAndOrientation(self.lego, [0.4,0,0.025], self.startOrientation)
         p.setGravity(0,0,-9.8)
         for _ in range(10):
             jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, [0.4, 0, 0.125], [1,0,0,0], maxNumIterations = self.n_substeps)
@@ -320,7 +249,7 @@ class XarmPickAndPlace(gym.GoalEnv):
         for _ in range(3):
             p.setJointMotorControl2(self.xarm, self.finger1_index, p.POSITION_CONTROL, 0.02)
             p.setJointMotorControl2(self.xarm, self.finger2_index, p.POSITION_CONTROL, 0.02)
-            if len(p.getContactPoints(self.xarm, self.legos[0], self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.legos[0], self.finger2_index))!=0: # grasp success -> change friction
+            if len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0: # grasp success -> change friction
                 p.changeDynamics(self.xarm, self.finger1_index, lateralFriction = 100)
                 p.changeDynamics(self.xarm, self.finger2_index, lateralFriction = 100)
             else:
@@ -335,7 +264,7 @@ class XarmPickAndPlace(gym.GoalEnv):
             jointPoses = p.calculateInverseKinematics(self.xarm, self.arm_eef_index, [0.3, 0, 0.3], [1,0,0,0], maxNumIterations = self.n_substeps)
             for i in range(1, self.arm_eef_index):
                 p.setJointMotorControl2(self.xarm, i, p.POSITION_CONTROL, jointPoses[i-1]) # max=1200
-            if len(p.getContactPoints(self.xarm, self.legos[0], self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.legos[0], self.finger2_index))!=0: # grasp success -> change friction
+            if len(p.getContactPoints(self.xarm, self.lego, self.finger1_index))!=0 and len(p.getContactPoints(self.xarm, self.lego, self.finger2_index))!=0: # grasp success -> change friction
                 p.changeDynamics(self.xarm, self.finger1_index, lateralFriction = 100)
                 p.changeDynamics(self.xarm, self.finger2_index, lateralFriction = 100)
             else:
@@ -349,14 +278,12 @@ class XarmPickAndPlace(gym.GoalEnv):
 if __name__ == '__main__':
     gym.logger.set_level(10)
     config = {
-        'GUI': True, 
         'init_grasp_rate': 0.0,
         'goal_ground_rate': 0.0,
-        'num_obj': 1,
-        'reward_type': 'incremental',
-        'goal_shape': 'ground' # air, tower
+        'reward_type': 'sparse',
+        'action_type': 'continous'
     }
-    env=XarmPickAndPlace(config)
+    env=XarmRelational(config)
     # video_recorder = video_recorder.VideoRecorder(
     #         env = env, path='/Users/reedpan/Desktop/Research/gym-xarm/gym_xarm/envs/video/pac_demo.mp4'
     # )
