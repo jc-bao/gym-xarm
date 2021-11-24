@@ -38,17 +38,17 @@ class XarmHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.4, -0.25 ,0.1]), high=np.array([0.0, 0.25, 0.2]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.25 ,0.1]), high=np.array([0.4, 0.25, 0.2]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.2, -0.24, 0.025]),high=np.array([0.4, 0.24, 0.25]), dtype=np.float32)
-        self.obj_space = spaces.Box(low=np.array([0.18, -0.24]), high=np.array([0.42, 0.24]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.35, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.2]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.35, 0.2, 0.2]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.1, -0.2, 0.025]),high=np.array([0.31, 0.2, 0.25]), dtype=np.float32) 
+        self.obj_space = spaces.Box(low=np.array([0.12, -0.2]), high=np.array([0.35, 0.2]), dtype=np.float32) 
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
         self.height_offset = 0.025
         self.eef2grip_offset = [0,0,0.088-0.021]
-        self.startPos_1 = [-0.7, 0, 0]
-        self.startPos_2 = [0.7, 0, 0]
+        self.startPos_1 = [-0.65, 0, 0]
+        self.startPos_2 = [0.65, 0, 0]
         self.startOrientation_1 = pybullet.getQuaternionFromEuler([0,0,0])
         self.startOrientation_2 = pybullet.getQuaternionFromEuler([0,0,np.pi])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
@@ -79,9 +79,9 @@ class XarmHandover(gym.GoalEnv):
         # load ground
         self.ground = self._p.loadURDF("plane.urdf", [0, 0, -0.625])
         # load table
-        self.table_1= self._p.loadURDF("table/table.urdf", [-0.9,0,-0.625], useFixedBase=True)
+        self.table_1= self._p.loadURDF("table/table.urdf", [-0.85,0,-0.625], useFixedBase=True)
         # self.table_2 = self._p.loadURDF("table/table.urdf", [0,0,-0.625], useFixedBase=True)
-        self.table_3 = self._p.loadURDF("table/table.urdf", [0.9,0,-0.625], useFixedBase=True)
+        self.table_3 = self._p.loadURDF("table/table.urdf", [0.85,0,-0.625], useFixedBase=True)
         # load lego
         self.colors = [np.random.sample(size = 3).tolist() + [1] for _ in range(self.config['num_obj'])]
         self.legos = [None] * self.config['num_obj']
