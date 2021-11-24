@@ -54,7 +54,7 @@ class XarmHandover(gym.GoalEnv):
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
         self.eff_init_pos_1 = [-0.2, 0.0, 0.2]
         self.eff_init_pos_2 = [0.2, 0.0, 0.2]
-        self.lego_length = 0.15
+        self.lego_length = 0.2
 
         # connect bullet
         if self.config['GUI']:
