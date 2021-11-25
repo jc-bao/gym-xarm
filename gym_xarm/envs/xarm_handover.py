@@ -38,10 +38,13 @@ class XarmHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.35, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.2]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.35, 0.2, 0.2]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.1, -0.2, 0.025]),high=np.array([0.31, 0.2, 0.25]), dtype=np.float32) 
-        self.obj_space = spaces.Box(low=np.array([0.12, -0.2]), high=np.array([0.35, 0.2]), dtype=np.float32) 
+        self.pos_space_1 = spaces.Box(low=np.array([-0.3, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.25]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.3, 0.2, 0.25]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([-0.25, -0.18, 0.025]),high=np.array([0.25, 0.18, 0.2]), dtype=np.float32) 
+        self.obj_space = [
+            spaces.Box(low=np.array([0.1, -0.18]), high=np.array([0.25, 0.18]), dtype=np.float32),
+            spaces.Box(low=np.array([-0.25, -0.18]), high=np.array([-0.1, 0.18]), dtype=np.float32) 
+        ]
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
@@ -54,7 +57,7 @@ class XarmHandover(gym.GoalEnv):
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
         self.eff_init_pos_1 = [-0.2, 0.0, 0.2]
         self.eff_init_pos_2 = [0.2, 0.0, 0.2]
-        self.lego_length = 0.2
+        self.lego_length = 0.15
 
         # connect bullet
         if self.config['GUI']:
@@ -88,7 +91,7 @@ class XarmHandover(gym.GoalEnv):
         for i in range(self.config['num_obj']):
             lg_v = self._p.createVisualShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.025], rgbaColor = self.colors[i])
             lg_c = self._p.createCollisionShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.025])
-            lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
+            lego_pos = np.concatenate((self.obj_space[0].sample(), [self.height_offset]))
             self.legos[i] = self._p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.5, basePosition=lego_pos, baseOrientation = self.startOrientation_1)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
@@ -101,11 +104,14 @@ class XarmHandover(gym.GoalEnv):
         for i in range(self.num_joints):
             self._p.resetJointState(self.xarm_1, i, self.joint_init_pos[i])
             self._p.resetJointState(self.xarm_2, i, self.joint_init_pos[i])
-        # load goal
+        # load goal and stand
         self.spheres = [None] * self.config['num_obj']
+        self.stands = [None] * self.config['num_obj']
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_stand.urdf')
         for i in range(self.config['num_obj']):
             sp = self._p.createVisualShape(shapeType=self._p.GEOM_SPHERE, radius = 0.03, rgbaColor = self.colors[i])
             self.spheres[i] = self._p.createMultiBody(baseVisualShapeIndex=sp)
+            self.stands[i] = self._p.loadURDF(fullpath, [0,0,0], self.startOrientation_1, useFixedBase=True)
         # load debug setting
         self._p.setDebugObjectColor(self.xarm_1, self.arm_eef_index,objectDebugColorRGB=[1, 0, 0])
         self._p.setDebugObjectColor(self.xarm_2, self.arm_eef_index,objectDebugColorRGB=[1, 0, 0])
@@ -236,7 +242,19 @@ class XarmHandover(gym.GoalEnv):
             self._p.changeDynamics(self.xarm_2, self.finger2_index, lateralFriction = 1)
         # reset lego pos to aviod fly away and aviod change direction
         for i in range(self.config['num_obj']):
-            lego_pos = self._p.getBasePositionAndOrientation(self.legos[i])[0]
+            lego_pos = list(self._p.getBasePositionAndOrientation(self.legos[i])[0])
+            if lego_pos[-1] > 0:
+                lego_pos[:2] = np.clip(lego_pos[:2], self.obj_space[0].low, self.obj_space[0].high)
+            else:
+                lego_pos[:2] = np.clip(lego_pos[:2], self.obj_space[1].low, self.obj_space[1].high)
+            # negative_side = lego_pos[0] < 0
+            # if negative_side:
+            #     lego_pos[0] = - lego_pos[0]
+            # low = self.obj_space.low.copy()
+            # low[0] = -1
+            # lego_pos[:2] = np.clip(lego_pos[:2], low, self.obj_space.high)
+            # if negative_side:
+            #     lego_pos[0] = - lego_pos[0]
             lego_ori = np.array(self._p.getBasePositionAndOrientation(self.legos[i])[1])
             lego_ori = [0, self._p.getEulerFromQuaternion(lego_ori)[1], 0]
             lego_ori = self._p.getQuaternionFromEuler(lego_ori)
@@ -300,12 +318,13 @@ class XarmHandover(gym.GoalEnv):
         # randomize position of lego
         pos = []
         for i in range(self.config['num_obj']):
-            pos.append(self.obj_space.sample())
+            pos.append(self.obj_space[0].sample())
             if i > 0:
                 while min([np.linalg.norm(pos[i][1]-pos[j][1]) for j in range(i)]) < 0.05:
-                    pos[i] = self.obj_space.sample()
-            if np.random.uniform() < 0.5:
-                pos[i][0] = - pos[i][0]
+                    if np.random.uniform() < 0.5:
+                        pos[i] = self.obj_space[0].sample()
+                    else:
+                        pos[i] = self.obj_space[1].sample()
             lego_pos = np.concatenate((pos[i], [self.height_offset]))
             self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
         self._p.stepSimulation()
@@ -326,15 +345,23 @@ class XarmHandover(gym.GoalEnv):
             if_same_side = (np.random.uniform() < self.config['same_side_rate']) # 0.5: same side rate
             if (np.array(obj_pos[i][0] > 0) ^ if_same_side):
                 goal[i][0] = -goal[i][0]
+            # if i==0 and np.array(obj_pos[i][0] > 0):
+            #     goal[i][0] = -goal[i][0]
+            # if i==1 and np.array(obj_pos[i][0] < 0):
+            #     goal[i][0] = -goal[i][0]
             if self.config['goal_shape'] == 'ground':
                 goal[i][2] = self.height_offset
+            stand_pos = np.array(goal[i]) - np.array([0,0,self.height_offset+0.005])
             self._p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
+            self._p.resetBasePositionAndOrientation(self.stands[i], stand_pos, self.startOrientation_1)
         return np.array(goal).flatten()
 
     def _is_success(self, achieved_goal, desired_goal):
         state = True
         for i in range(self.config['num_obj']):
             d = np.linalg.norm(achieved_goal[i*3:i*3+3] - desired_goal[i*3:i*3+3], axis=-1)
+            # if (d < self.distance_threshold):
+            #     self._p.changeVisualShape(self.spheres[i], 1, rgbaColor=self.colors[i][:3]+[1])
             state = (d < self.distance_threshold) and state
         return float(state)
 
@@ -384,7 +411,7 @@ class XarmHandover(gym.GoalEnv):
     
 if __name__ == '__main__':
     config = {
-        'goal_shape': 'ground',
+        'goal_shape': 'air',
         'num_obj': 2,
         'GUI': True, 
         'same_side_rate': 0.5
@@ -395,6 +422,6 @@ if __name__ == '__main__':
         # action = env.ezpolicy(obs)
         action = env.action_space.sample()
         obs, *_= env.step(action)
-        time.sleep(0.03)
+        time.sleep(0.02)
         if i % 50 == 0:
             env.reset()

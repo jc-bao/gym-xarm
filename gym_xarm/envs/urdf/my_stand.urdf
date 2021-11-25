@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<robot name="stand">
+  <link name="baseLink">
+    <contact>
+      <!-- <stiffness value="100000.0"/>
+      <damping value="1000000.0"/> -->
+      <lateral_friction value="1.0"/>
+      <!-- <rolling_friction value="1.0"/> -->
+      <contact_cfm value="1.0"/>
+      <contact_erp value="1.0"/>
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+       <mass value="0.5"/>
+       <inertia ixx="10" ixy="1" ixz="1" iyy="10" iyz="1" izz="10"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+				<mesh filename="meshes/cube.obj" scale="0.07 0.06 0.01"/>
+      </geometry>
+       <material name="white">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <!-- <contact_coefficients mu='10.0' kp='100.0' kd='1.0'/> -->
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+	 	<box size="0.07 0.06 0.01"/>
+      </geometry>
+      <surface>
+        <bounce restitution_coefficient = "1"/>
+      </surface>
+    </collision>
+  </link>
+</robot>
+
