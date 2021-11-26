@@ -38,10 +38,10 @@ class XarmHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.3, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.25]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.3, 0.2, 0.25]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.1, -0.18, 0.025]),high=np.array([0.3, 0.18, 0.24]), dtype=np.float32) 
-        self.obj_space = spaces.Box(low=np.array([0.1, -0.18]), high=np.array([0.27, 0.18]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.27, -0.2 ,0.08]), high=np.array([0.0, 0.2, 0.25]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.08]), high=np.array([0.27, 0.2, 0.25]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.13, -0.18, 0.025]),high=np.array([0.25, 0.18, 0.24]), dtype=np.float32) 
+        self.obj_space = spaces.Box(low=np.array([0.15, -0.18]), high=np.array([0.23, 0.18]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
@@ -409,12 +409,12 @@ class XarmHandover(gym.GoalEnv):
     
 if __name__ == '__main__':
     config = {
-        'goal_shape': 'ground',
-        'num_obj': 1,
-        'obj_length': 0.15, 
+        'goal_shape': 'ground', 
+        'num_obj': 2,
         'GUI': True, 
         'same_side_rate': 0.5,
         'use_stand': False,
+        'lego_length': 0.15
     }
     env = XarmHandover(config)
     obs = env.reset()
