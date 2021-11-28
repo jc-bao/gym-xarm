@@ -38,10 +38,10 @@ class XarmHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.3, -0.25 ,0.1]), high=np.array([0.0, 0.25, 0.25]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.25 ,0.1]), high=np.array([0.3, 0.25, 0.25]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.105, -0.2, 0.025]),high=np.array([0.25, 0.2, 0.24]), dtype=np.float32) 
-        self.obj_space = spaces.Box(low=np.array([0.13, -0.2]), high=np.array([0.25, 0.2]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.3, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.22]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.3, 0.2, 0.22]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.1, -0.18, 0.025]),high=np.array([0.28, 0.18, 0.2]), dtype=np.float32) 
+        self.obj_space = spaces.Box(low=np.array([0.11, -0.18]), high=np.array([0.28, 0.2]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
@@ -52,8 +52,8 @@ class XarmHandover(gym.GoalEnv):
         self.startOrientation_1 = pybullet.getQuaternionFromEuler([0,0,0])
         self.startOrientation_2 = pybullet.getQuaternionFromEuler([0,0,np.pi])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
-        self.eff_init_pos_1 = [-0.2, 0.0, 0.2]
-        self.eff_init_pos_2 = [0.2, 0.0, 0.2]
+        self.eff_init_pos_1 = [-0.15, 0.0, 0.15]
+        self.eff_init_pos_2 = [0.15, 0.0, 0.15]
         self.lego_length = 0.15
 
         # connect bullet
