@@ -38,10 +38,10 @@ class XarmHandover(gym.GoalEnv):
         self.finger2_index = 11
         self.grasp_index = 12
         self.reward_type = 'sparse'
-        self.pos_space_1 = spaces.Box(low=np.array([-0.25, -0.2 ,0.1]), high=np.array([0.0, 0.2, 0.25]), dtype=np.float32)
-        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.2 ,0.1]), high=np.array([0.25, 0.2, 0.25]), dtype=np.float32)
-        self.goal_space = spaces.Box(low=np.array([0.12, -0.18, 0.025]),high=np.array([0.25, 0.18, 0.24]), dtype=np.float32) 
-        self.obj_space = spaces.Box(low=np.array([0.16, -0.18]), high=np.array([0.25, 0.18]), dtype=np.float32)
+        self.pos_space_1 = spaces.Box(low=np.array([-0.3, -0.25 ,0.1]), high=np.array([0.0, 0.25, 0.25]), dtype=np.float32)
+        self.pos_space_2 = spaces.Box(low=np.array([0.0, -0.25 ,0.1]), high=np.array([0.3, 0.25, 0.25]), dtype=np.float32)
+        self.goal_space = spaces.Box(low=np.array([0.105, -0.2, 0.025]),high=np.array([0.25, 0.2, 0.24]), dtype=np.float32) 
+        self.obj_space = spaces.Box(low=np.array([0.13, -0.2]), high=np.array([0.25, 0.2]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
         self.max_vel = 0.25
         self.max_gripper_vel = 1
@@ -54,7 +54,7 @@ class XarmHandover(gym.GoalEnv):
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*2 + [0.04]*2 + [0]
         self.eff_init_pos_1 = [-0.2, 0.0, 0.2]
         self.eff_init_pos_2 = [0.2, 0.0, 0.2]
-        self.lego_length = 0.15 
+        self.lego_length = 0.15
 
         # connect bullet
         if self.config['GUI']:
@@ -248,9 +248,7 @@ class XarmHandover(gym.GoalEnv):
             negative_side = lego_pos[0] < 0
             if negative_side:
                 lego_pos[0] = - lego_pos[0]
-            low = self.obj_space.low.copy()
-            low[0] = -1
-            lego_pos[:2] = np.clip(lego_pos[:2], low, self.obj_space.high)
+            lego_pos[:2] = np.clip(lego_pos[:2], -self.obj_space.high , self.obj_space.high)
             if negative_side:
                 lego_pos[0] = - lego_pos[0]
             lego_ori = np.array(self._p.getBasePositionAndOrientation(self.legos[i])[1])
