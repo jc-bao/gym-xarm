@@ -35,7 +35,7 @@ class XarmReachEnv(gym.GoalEnv):
         self._max_episode_steps = 50
         
         # connect bullet
-        if self.num_client == 1 and config['render']:
+        if self.num_client == 1 and config['GUI']:
             p.connect(p.GUI) #or p.DIRECT for non-graphical version
             p.resetDebugVisualizerCamera( cameraDistance=1.5, cameraYaw=0, cameraPitch=-45, cameraTargetPosition=[-0.1,0.1,-0.1])
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
@@ -72,7 +72,8 @@ class XarmReachEnv(gym.GoalEnv):
             achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
         ))
-
+        self.achieved_goal_index = len(obs['observation'])
+        self.desired_goal_index = len(obs['observation']) + len(obs['achieved_goal'])
         p.stepSimulation()
 
     # basic methods
