@@ -47,6 +47,7 @@ class XarmPickAndPlace(gym.GoalEnv):
         self.eef2grip_offset = [0,0,0.088-0.021]
         # training parameters
         self._max_episode_steps = 50
+        self.lego_length = 0.05
         
         # connect bullet
         if config['GUI']:
@@ -67,10 +68,10 @@ class XarmPickAndPlace(gym.GoalEnv):
         self.colors = [np.random.sample(size = 3).tolist() + [1] for _ in range(self.config['num_obj'])]
         self.legos = [None] * self.config['num_obj']
         for i in range(self.config['num_obj']):
-            lg_v = self._p.createVisualShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04], rgbaColor = self.colors[i])
-            lg_c = self._p.createCollisionShape(shapeType=self._p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04])
+            lg_v = p.createVisualShape(shapeType=p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04], rgbaColor = self.colors[i])
+            lg_c = p.createCollisionShape(shapeType=p.GEOM_BOX, halfExtents = [self.lego_length/2, 0.025, 0.04])
             lego_pos = np.concatenate((self.obj_space.sample(), [self.height_offset]))
-            self.legos[i] = self._p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.5, basePosition=lego_pos, baseOrientation = self.startOrientation_1)
+            self.legos[i] = p.createMultiBody(baseVisualShapeIndex=lg_v, baseCollisionShapeIndex = lg_c, baseMass = 0.5, basePosition=lego_pos, baseOrientation = self.startOrientation)
         # load arm
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/xarm7_pd.urdf')
         self.xarm = p.loadURDF(fullpath, self.startBasePos, self.startOrientation, useFixedBase=True)
@@ -78,7 +79,13 @@ class XarmPickAndPlace(gym.GoalEnv):
         p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
         # load goal
         fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_sphere.urdf')
-        self.sphere = p.loadURDF(fullpath,useFixedBase=True)
+        self.spheres = [None] * self.config['num_obj']
+        self.stands = [None] * self.config['num_obj']
+        fullpath = os.path.join(os.path.dirname(__file__), 'urdf/my_stand.urdf')
+        for i in range(self.config['num_obj']):
+            sp = p.createVisualShape(shapeType=p.GEOM_SPHERE, radius = 0.03, rgbaColor = self.colors[i])
+            self.spheres[i] = p.createMultiBody(baseVisualShapeIndex=sp)
+            self.stands[i] = p.loadURDF(fullpath, [0,2,0], self.startOrientation, useFixedBase=True)
         # load debug setting
         p.setDebugObjectColor(self.xarm, self.arm_eef_index,objectDebugColorRGB=[1, 0, 0])
 
@@ -218,7 +225,7 @@ class XarmPickAndPlace(gym.GoalEnv):
         grip_state = p.getLinkState(self.xarm, self.gripper_base_index, computeLinkVelocity=1)
         grip_pos = np.array(grip_state[0])
         grip_velp = np.array(grip_state[6])
-        robot_state = np.concatenate(grip_pos, grip_velp, gripper_pos, gripper_vel)
+        robot_state = np.concatenate((grip_pos, grip_velp, gripper_pos, gripper_vel))
         # object state
         obj_state = np.array([])
         achieved_goal = np.array([])
@@ -234,8 +241,6 @@ class XarmPickAndPlace(gym.GoalEnv):
         # robot observation: 3xyz+1v+1d+1v=8 
         # object observation: 3*5 = 15
         obs = np.concatenate((robot_state, obj_state ))
-        # achieved goal
-        achieved_goal = np.append(achieved_goal, grip_pos)
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
@@ -278,10 +283,7 @@ class XarmPickAndPlace(gym.GoalEnv):
             pos_xy = self.goal_space.sample()[:2]
             for i in range(self.config['num_obj']):
                 goal[i] = np.concatenate((pos_xy, [self.height_offset*(2*i+1)]))
-            self._p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation_1)
-        # set goal position
-        for g in goal:
-            p.resetBasePositionAndOrientation(self.sphere, g, self.startOrientation)
+                p.resetBasePositionAndOrientation(self.spheres[i], goal[i], self.startOrientation)
         return np.array(goal)
 
     def _is_success(self, achieved_goal, desired_goal):

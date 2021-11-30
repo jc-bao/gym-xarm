@@ -25,7 +25,7 @@ class XarmHandover(gym.GoalEnv):
     def __init__(self, config):
         # bullet paramters
         self.config = config
-        self.timeStep=1./60
+        self.timeStep=1./240
         self.n_substeps = 15
         self.dt = self.timeStep*self.n_substeps
 
@@ -43,7 +43,7 @@ class XarmHandover(gym.GoalEnv):
         self.goal_space = spaces.Box(low=np.array([0.1, -0.18, 0.025]),high=np.array([0.28, 0.18, 0.2]), dtype=np.float32) 
         self.obj_space = spaces.Box(low=np.array([0.11, -0.18]), high=np.array([0.28, 0.2]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
-        self.max_vel = 0.25
+        self.max_vel = 1.5
         self.max_gripper_vel = 1
         self.height_offset = 0.025
         self.eef2grip_offset = [0,0,0.088-0.021]
@@ -62,8 +62,10 @@ class XarmHandover(gym.GoalEnv):
         else:
             self._p = bullet_client.BulletClient(connection_mode=pybullet.DIRECT)
         self._p.configureDebugVisualizer(self._p.COV_ENABLE_GUI, False)
-        self._p.setRealTimeSimulation(True)
         self._p.resetDebugVisualizerCamera(cameraDistance=0.8, cameraYaw=0, cameraPitch=-30, cameraTargetPosition=[0,0,0.2])
+        # set gravity
+        # self._p.setGravity(0,0,-9.8)
+        self._p.setGravity(0,0,-9.8)
 
         # training parameters
         self._max_episode_steps = 100
@@ -71,11 +73,8 @@ class XarmHandover(gym.GoalEnv):
 
         # bullet setup
         self.seed()
-        self._p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
         self._p.setAdditionalSearchPath(pd.getDataPath())
         self._p.setTimeStep(self.timeStep)
-        self._p.setPhysicsEngineParameter(numSubSteps = self.n_substeps)
-        self._p.setGravity(0,0,-9.8)
         # load ground
         self.ground = self._p.loadURDF("plane.urdf", [0, 0, -0.625])
         # load table
@@ -129,7 +128,8 @@ class XarmHandover(gym.GoalEnv):
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
-        self._p.stepSimulation()
+        for _ in range(self.n_substeps):
+            self._p.stepSimulation()
         obs = self._get_obs()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
@@ -320,6 +320,7 @@ class XarmHandover(gym.GoalEnv):
                     pos[i] = self.obj_space.sample()
             if np.random.uniform() < 0.5:
                 pos[i][0] = -pos[i][0]
+            pos[i][0] = 0
             lego_pos = np.concatenate((pos[i], [self.height_offset]))
             self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
         self._p.stepSimulation()
