@@ -32,7 +32,7 @@ class XarmReachEnv(gym.GoalEnv):
         self.startOrientation = p.getQuaternionFromEuler([0,0,0])
         self.joint_init_pos = [0, -0.009068751632859924, -0.08153217279952825, 0.09299669711139864, 1.067692645248743, 0.0004018824370178429, 1.1524205092196147, -0.0004991403332530034] + [0]*9
         # training parameters
-        self._max_episode_steps = 50
+        self._max_episode_steps = 25
         
         # connect bullet
         if self.num_client == 1 and config['GUI']:
@@ -68,9 +68,9 @@ class XarmReachEnv(gym.GoalEnv):
         obs = self._get_obs()
         self.action_space = spaces.Box(-1., 1., shape=(4,), dtype='float32')
         self.observation_space = spaces.Dict(dict(
-            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
-            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
             observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
         ))
         self.achieved_goal_index = len(obs['observation'])
         self.desired_goal_index = len(obs['observation']) + len(obs['achieved_goal'])
@@ -79,6 +79,7 @@ class XarmReachEnv(gym.GoalEnv):
     # basic methods
     # -------------------------
     def step(self, action):
+        self.num_steps += 1
         action = np.clip(action, self.action_space.low, self.action_space.high)
         self._set_action(action)
         p.setGravity(0,0,-9.8)
@@ -86,9 +87,10 @@ class XarmReachEnv(gym.GoalEnv):
         obs = self._get_obs()
         info = {
             'is_success': self._is_success(obs['achieved_goal'], self.goal),
+            'future_length': self._max_episode_steps - self.num_steps
         }
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
-        done = False
+        done = (self.num_steps == self._max_episode_steps)
         return obs, reward, done, info
 
     def reset(self):
@@ -96,6 +98,7 @@ class XarmReachEnv(gym.GoalEnv):
         self._reset_sim()
         self.goal = self._sample_goal()
         self.d_old = np.linalg.norm(p.getLinkState(self.xarm, self.gripper_base_index)[0] - self.goal, axis=-1)
+        self.num_steps = 0
         return self._get_obs()
 
     # GoalEnv methods
@@ -104,7 +107,7 @@ class XarmReachEnv(gym.GoalEnv):
     def compute_reward(self, achieved_goal, goal, info):
         d = np.linalg.norm(achieved_goal - goal, axis=-1)
         if self.reward_type == 'sparse':
-            return -(d > self.distance_threshold).astype(np.float32)
+            return (d < self.distance_threshold).astype(np.float32)
         elif self.reward_type == 'dense':
             return -d
         elif self.reward_type == 'dense_diff':

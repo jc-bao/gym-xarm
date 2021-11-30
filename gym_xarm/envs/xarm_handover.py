@@ -166,7 +166,7 @@ class XarmHandover(gym.GoalEnv):
             grip_pos_1 = achieved_goal[-6:-3]
             grip_pos_2 = achieved_goal[-3:]
             for i in range(self.config['num_obj']):
-                d = np.linalg.norm(achieved_goal[i*3:i*3+2] - goal[i*3:i*3+2], axis=-1)
+                d = np.linalg.norm(achieved_goal[i*3:i*3+3] - goal[i*3:i*3+3], axis=-1)
                 if d < self.distance_threshold:
                     reward += 1
                     # if the object is set, encourage the gripper leave
@@ -338,12 +338,12 @@ class XarmHandover(gym.GoalEnv):
                     goal[i] = self.goal_space.sample()
                     min_dis2obj = min([np.linalg.norm(goal[i][:2] - obj_pos[k][:2]) for k in range(self.config['num_obj'])])
             if_same_side = (np.random.uniform() < self.config['same_side_rate']) # 0.5: same side rate
-            if (np.array(obj_pos[i][0] > 0) ^ if_same_side):
+            # if (np.array(obj_pos[i][0] > 0) ^ if_same_side):
+            #     goal[i][0] = -goal[i][0]
+            if i==0 and np.array(obj_pos[i][0] > 0):
                 goal[i][0] = -goal[i][0]
-            # if i==0 and np.array(obj_pos[i][0] > 0):
-            #     goal[i][0] = -goal[i][0]
-            # if i==1 and np.array(obj_pos[i][0] < 0):
-            #     goal[i][0] = -goal[i][0]
+            if i==1 and np.array(obj_pos[i][0] > 0):
+                goal[i][0] = -goal[i][0]
             if self.config['goal_shape'] == 'ground':
                 goal[i][2] = self.height_offset
             stand_pos = np.array(goal[i]) - np.array([0,0,self.height_offset+0.005])
