@@ -43,7 +43,7 @@ class XarmHandover(gym.GoalEnv):
         self.goal_space = spaces.Box(low=np.array([0.1, -0.18, 0.025]),high=np.array([0.28, 0.18, 0.2]), dtype=np.float32) 
         self.obj_space = spaces.Box(low=np.array([0.11, -0.18]), high=np.array([0.28, 0.2]), dtype=np.float32)
         self.gripper_space = spaces.Box(low=0.020, high=0.04, shape=[1], dtype=np.float32)
-        self.max_vel = 1.5
+        self.max_vel = 1.8
         self.max_gripper_vel = 1
         self.height_offset = 0.025
         self.eef2grip_offset = [0,0,0.088-0.021]
@@ -320,7 +320,6 @@ class XarmHandover(gym.GoalEnv):
                     pos[i] = self.obj_space.sample()
             if np.random.uniform() < 0.5:
                 pos[i][0] = -pos[i][0]
-            pos[i][0] = 0
             lego_pos = np.concatenate((pos[i], [self.height_offset]))
             self._p.resetBasePositionAndOrientation(self.legos[i], lego_pos, self.startOrientation_1)
         self._p.stepSimulation()
