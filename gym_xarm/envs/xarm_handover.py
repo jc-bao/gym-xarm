@@ -195,8 +195,41 @@ class XarmHandover(gym.GoalEnv):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def render(self):
-        raise NotImplementedError
+    def render(
+        self,
+        mode: str = "human",
+        width: int = 720,
+        height: int = 480,
+        target_position: np.ndarray = np.zeros(3),
+        distance: float = 1.4,
+        yaw: float = 45,
+        pitch: float = -30,
+        roll: float = 0,
+    ):
+        if mode == "human":
+            self._p.configureDebugVisualizer(self._p.COV_ENABLE_SINGLE_STEP_RENDERING)
+            time.sleep(self.dt)  # wait to seems like real speed
+        if mode == "rgb_array":
+            view_matrix = self._p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition=target_position,
+                distance=distance,
+                yaw=yaw,
+                pitch=pitch,
+                roll=roll,
+                upAxisIndex=2,
+            )
+            proj_matrix = self._p.computeProjectionMatrixFOV(
+                fov=60, aspect=float(width) / height, nearVal=0.1, farVal=100.0
+            )
+            (_, _, px, depth, _) = self._p.getCameraImage(
+                width=width,
+                height=height,
+                viewMatrix=view_matrix,
+                projectionMatrix=proj_matrix,
+                renderer=pybullet.ER_BULLET_HARDWARE_OPENGL,
+            )
+
+            return px
 
     # RobotEnv method
     # -------------------------
